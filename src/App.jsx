@@ -894,7 +894,7 @@ export default function App() {
     saveSimulatedAgedDays(0);
     
     // Clear localized complaints key to restore original pristine seed data state
-    localStorage.removeItem("urban_eye_complaints");
+    localStorage.removeItem("urbaneye_complaints");
     const fresh = getComplaints();
     const aged = runAgingEngine(fresh);
     setComplaints(aged);
