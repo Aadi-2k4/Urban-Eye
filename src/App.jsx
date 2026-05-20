@@ -36,7 +36,8 @@ import {
   getSimulatedAgedDays,
   saveSimulatedAgedDays,
   getStoredUsers,
-  saveUsers
+  saveUsers,
+  getAdminInfoFromRole
 } from "./utils/storage";
 
 export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
@@ -57,10 +58,22 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
     }
 
     if (tab === "admin") {
-      if (username.toLowerCase() === "admin" && password === "admin") {
+      const users = getStoredUsers();
+      const adminUser = users.find(
+        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password && u.role !== "citizen"
+      );
+      
+      const isSuperAdmin = username.toLowerCase() === "admin" && password === "admin";
+
+      if (isSuperAdmin) {
         setSuccess(true);
         setTimeout(() => {
           onLoginSuccess({ name: "Government Administrator", role: "admin", username: "admin" });
+        }, 800);
+      } else if (adminUser) {
+        setSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(adminUser);
         }, 800);
       } else {
         setError("Invalid administrator credentials.");
@@ -283,7 +296,7 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
 
                 {tab === "admin" && (
                   <p className="admin-notice">
-                    ⚠️ Authorized Personnel Only. Use credentials <code>admin</code> / <code>admin</code>.
+                    ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
                   </p>
                 )}
 
@@ -332,6 +345,59 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
           justify-content: space-between;
           border-radius: 14px;
           z-index: 2010;
+        }
+
+        .brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .brand-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          background: var(--accent-color);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px var(--accent-glow);
+        }
+
+        .brand-text {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .brand-main {
+          font-family: var(--font-heading);
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--text-primary);
+          line-height: 1.1;
+        }
+
+        .brand-sub {
+          font-size: 10px;
+          color: var(--text-muted);
+          font-weight: 500;
+        }
+
+        .action-btn.theme-toggle {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          transition: background var(--transition-fast);
+        }
+
+        .action-btn.theme-toggle:hover {
+          background: rgba(255, 255, 255, 0.1);
         }
 
         .landing-grid-container {
@@ -464,6 +530,126 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
           line-height: 1.4;
         }
 
+        /* Shared Authentication Form Classes */
+        .auth-tabs {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 8px;
+          padding: 4px;
+          border: 1px solid var(--border-color);
+        }
+
+        .auth-tab-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 10px 4px;
+          border-radius: 6px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          transition: color var(--transition-fast), background var(--transition-fast);
+        }
+
+        .auth-tab-btn.active {
+          color: var(--text-primary);
+          background: var(--bg-input);
+          border: 1px solid var(--border-color);
+        }
+
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .auth-error-alert {
+          background: rgba(239, 68, 68, 0.15);
+          color: var(--color-seriousness-critical);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          padding: 10px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          text-align: left;
+        }
+
+        .form-group label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+
+        .input-with-icon {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .input-icon {
+          position: absolute;
+          left: 14px;
+          color: var(--text-muted);
+        }
+
+        .input-with-icon input {
+          width: 100%;
+          background: var(--bg-input);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          padding: 12px 14px 12px 42px;
+          font-size: 14px;
+          height: 46px;
+          color: var(--text-primary);
+          transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .input-with-icon input:focus {
+          outline: none;
+          border-color: var(--accent-color);
+          box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .admin-notice {
+          font-size: 12px;
+          color: var(--color-seriousness-medium);
+          line-height: 1.4;
+          background: rgba(234, 179, 8, 0.08);
+          border-radius: 6px;
+          padding: 8px 10px;
+          border: 1px dashed rgba(234, 179, 8, 0.2);
+          text-align: left;
+        }
+
+        .auth-submit-btn {
+          width: 100%;
+          background: var(--accent-color);
+          color: white;
+          padding: 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          margin-top: 6px;
+          transition: background var(--transition-fast);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .auth-submit-btn:hover {
+          background: var(--accent-hover);
+        }
+
         .login-success-state {
           display: flex;
           flex-direction: column;
@@ -562,6 +748,28 @@ export default function App() {
   // Micro-animation indicator for time-warp warp
   const [isTimeWarping, setIsTimeWarping] = useState(false);
 
+  // Centralized filtering of complaints based on currentUser role
+  const getVisibleComplaints = () => {
+    if (!currentUser) return [];
+    
+    // Legacy admin is a Super Admin: sees everything
+    if (currentUser.role === "admin" || currentUser.role === "ADMIN") {
+      return complaints;
+    }
+    
+    // Check if user is a departmental admin
+    const adminInfo = getAdminInfoFromRole(currentUser.role);
+    if (adminInfo) {
+      return complaints.filter(
+        (c) => c.hierarchyLevel === adminInfo.level && c.assignedDepartment === adminInfo.department
+      );
+    }
+    
+    return complaints;
+  };
+  
+  const visibleComplaints = getVisibleComplaints();
+
   // 1. Initial Mount: Load Theme, Session, and run Aging calculation
   useEffect(() => {
     // Theme setup
@@ -579,38 +787,72 @@ export default function App() {
 
     // Load complaints and run the aging engine
     const rawComplaints = getComplaints();
-    const agedComplaints = runAgingEngine(rawComplaints);
+    const agedComplaints = runAgingEngine(rawComplaints, agedDays);
     setComplaints(agedComplaints);
     saveComplaints(agedComplaints);
   }, []);
 
   // 2. Starvation Prevention & Aging Algorithm
-  const runAgingEngine = (list) => {
+  const runAgingEngine = (list, customAgedDays = null) => {
+    const priorities = ["low", "medium", "high", "critical"];
+    const targetAgedDays = customAgedDays !== null ? customAgedDays : simulatedDaysAged;
+
     return list.map((c) => {
       if (c.status === "resolved") return c; // resolved issues are frozen
 
-      // Calculate elapsed age in milliseconds
-      const ageMs = Date.now() - c.createdAt;
-      const ageDays = ageMs / (24 * 3600 * 1000);
+      // Calculate effective simulated age in days:
+      const isPreSeeded = typeof c.id === "string" && /^c\d+$/.test(c.id);
+      const ageDays = isPreSeeded 
+        ? targetAgedDays 
+        : Math.max(0, targetAgedDays - (c.simulatedDaysAtCreation || 0));
 
-      let newSeriousness = c.seriousness;
+      // Start with original seriousness/priority
+      let newSeriousness = c.originalSeriousness || c.seriousness || "medium";
+      
+      // Calculate priority progression (boosted by 1 level for every 7 days)
+      const steps = Math.floor(ageDays / 7);
+      if (steps > 0) {
+        let currentIndex = priorities.indexOf(newSeriousness);
+        if (currentIndex !== -1) {
+          const newIndex = Math.min(priorities.length - 1, currentIndex + steps);
+          newSeriousness = priorities[newIndex];
+        }
+      }
 
-      // Promotion Urgency Gates
-      if (ageDays > 15) {
-        newSeriousness = "critical";
-      } else if (ageDays > 10) {
-        if (c.seriousness === "low" || c.seriousness === "medium") {
-          newSeriousness = "high";
+      // Start with original hierarchy level manually set or defaulted
+      let newLevel = c.originalHierarchyLevel || c.hierarchyLevel || "panchayath";
+      
+      // Filter out previous automated system logs to avoid duplicates or orphans when resetting
+      const logs = (c.escalationLogs || []).filter(
+        log => log.byUser !== "System Automated Escalation Engine"
+      );
+
+      // Automated Governance Escalation Gates
+      if (ageDays > 10) {
+        if (newLevel !== "state") {
+          logs.push({
+            timestamp: Date.now(),
+            byUser: "System Automated Escalation Engine",
+            details: `Automated escalation to STATE level due to unresolved ticket age (> 10 days).`
+          });
+          newLevel = "state";
         }
       } else if (ageDays > 5) {
-        if (c.seriousness === "low") {
-          newSeriousness = "medium";
+        if (newLevel === "panchayath") {
+          logs.push({
+            timestamp: Date.now(),
+            byUser: "System Automated Escalation Engine",
+            details: `Automated escalation from PANCHAYATH to DISTRICT level due to unresolved ticket age (> 5 days).`
+          });
+          newLevel = "district";
         }
       }
 
       return {
         ...c,
-        seriousness: newSeriousness
+        seriousness: newSeriousness,
+        hierarchyLevel: newLevel,
+        escalationLogs: logs
       };
     });
   };
@@ -633,7 +875,7 @@ export default function App() {
     });
 
     // Feed through the aging promotion checker
-    const aged = runAgingEngine(shifted);
+    const aged = runAgingEngine(shifted, newAgedDays);
     setComplaints(aged);
     saveComplaints(aged);
 
@@ -647,6 +889,28 @@ export default function App() {
     setTimeout(() => {
       setIsTimeWarping(false);
     }, 2000);
+  };
+
+  const handleResetSimulation = () => {
+    setIsTimeWarping(true);
+    setSimulatedDaysAged(0);
+    saveSimulatedAgedDays(0);
+    
+    // Clear localized complaints key to restore original pristine seed data state
+    localStorage.removeItem("urbaneye_complaints");
+    const fresh = getComplaints();
+    const aged = runAgingEngine(fresh, 0);
+    setComplaints(aged);
+    saveComplaints(aged);
+    
+    if (selectedComplaint) {
+      const activeObj = aged.find(c => c.id === selectedComplaint.id);
+      setSelectedComplaint(activeObj || null);
+    }
+    
+    setTimeout(() => {
+      setIsTimeWarping(false);
+    }, 1500);
   };
 
   // 4. Global Action Handlers
@@ -669,8 +933,12 @@ export default function App() {
   };
 
   const handleNewComplaintSubmit = (newComp) => {
+    const enriched = {
+      ...newComp,
+      simulatedDaysAtCreation: simulatedDaysAged
+    };
     // Run aging check on the fresh submission list
-    const updated = [newComp, ...complaints];
+    const updated = [enriched, ...complaints];
     const aged = runAgingEngine(updated);
     setComplaints(aged);
     saveComplaints(aged);
@@ -704,24 +972,27 @@ export default function App() {
       return;
     }
 
-    let alreadyVoted = false;
     const updated = complaints.map(c => {
       if (c.id === id) {
         const upvotedByList = c.upvotedBy || [];
-        if (upvotedByList.includes(currentUser.username)) {
-          alreadyVoted = true;
-          return c;
+        const hasVoted = upvotedByList.includes(currentUser.username);
+        
+        if (hasVoted) {
+          return {
+            ...c,
+            upvotes: Math.max(0, (c.upvotes || 1) - 1),
+            upvotedBy: upvotedByList.filter(username => username !== currentUser.username)
+          };
+        } else {
+          return {
+            ...c,
+            upvotes: (c.upvotes || 0) + 1,
+            upvotedBy: [...upvotedByList, currentUser.username]
+          };
         }
-        return {
-          ...c,
-          upvotes: (c.upvotes || 0) + 1,
-          upvotedBy: [...upvotedByList, currentUser.username]
-        };
       }
       return c;
     });
-
-    if (alreadyVoted) return;
 
     setComplaints(updated);
     saveComplaints(updated);
@@ -761,13 +1032,14 @@ export default function App() {
         onOpenAuth={() => setAuthModalOpen(true)}
         onFastForwardTime={handleFastForwardTime}
         simulatedDaysAged={simulatedDaysAged}
+        onResetSimulation={handleResetSimulation}
       />
 
       {/* Main Tab Routing */}
       <main className="main-content-tab-window animate-fade-in">
         {activeTab === "feed" && (
           <ComplaintFeed
-            complaints={complaints}
+            complaints={visibleComplaints}
             onComplaintClick={handleOpenComplaintDetails}
             onUpvote={handleUpvote}
             currentUser={currentUser}
@@ -776,7 +1048,7 @@ export default function App() {
 
         {activeTab === "map" && (
           <InteractiveMap
-            complaints={complaints}
+            complaints={visibleComplaints}
             onComplaintClick={handleOpenComplaintDetails}
             theme={theme}
           />
@@ -784,13 +1056,13 @@ export default function App() {
 
         {activeTab === "leaderboard" && (
           <Leaderboard
-            complaints={complaints}
+            complaints={visibleComplaints}
           />
         )}
 
         {activeTab === "insights" && (
           <Dashboard
-            complaints={complaints}
+            complaints={visibleComplaints}
           />
         )}
       </main>

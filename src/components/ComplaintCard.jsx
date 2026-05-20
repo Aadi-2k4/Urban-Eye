@@ -2,6 +2,7 @@
 import React from "react";
 import { ThumbsUp, MessageSquare, MapPin, Calendar, Clock, AlertTriangle, ArrowUpRight } from "lucide-react";
 import { districtNames } from "../utils/seedData";
+import { isUserAdmin } from "../utils/storage";
 
 // Helper for category translations/styling
 const categoryMeta = {
@@ -131,7 +132,7 @@ export default function ComplaintCard({ complaint, onClick, onUpvote, currentUse
             <Clock size={12} color="var(--text-muted)" />
             <span>{getRelativeTime(complaint.createdAt)}</span>
             <span className="meta-dot">•</span>
-            <span>By: {complaint.citizen}</span>
+            <span>By: {isUserAdmin(currentUser) ? "[REDACTED FOR PRIVACY]" : complaint.citizen}</span>
           </div>
 
           <div className="action-stats">
@@ -154,6 +155,7 @@ export default function ComplaintCard({ complaint, onClick, onUpvote, currentUse
 
       <style>{`
         .card-complaint {
+          position: relative;
           display: flex;
           flex-direction: column;
           overflow: hidden;

@@ -1,6 +1,7 @@
 // Header.jsx - Main top navigation bar with User authentication feedback, theme switches, and Time Machine fast forward controls
 import React from "react";
-import { Megaphone, Map, Trophy, BarChart3, Sun, Moon, Plus, LogIn, LogOut, ShieldAlert, FastForward, User } from "lucide-react";
+import { Megaphone, Map, Trophy, BarChart3, Sun, Moon, Plus, LogIn, LogOut, ShieldAlert, FastForward, User, RotateCcw } from "lucide-react";
+import { isUserAdmin } from "../utils/storage";
 
 export default function Header({
   activeTab,
@@ -12,7 +13,8 @@ export default function Header({
   onLogout,
   onOpenAuth,
   onFastForwardTime,
-  simulatedDaysAged
+  simulatedDaysAged,
+  onResetSimulation
 }) {
   const tabs = [
     { id: "feed", label: "Feed", icon: Megaphone },
@@ -58,11 +60,22 @@ export default function Header({
           {/* Time Machine Simulator Badge */}
           {onFastForwardTime && (
             <div className="time-machine-container">
-              {simulatedDaysAged > 0 && (
-                <span className="time-aged-badge">
-                  +{simulatedDaysAged}d Warp
-                </span>
-              )}
+              {simulatedDaysAged > 0 ? (
+                <>
+                  <span className="time-aged-badge">
+                    +{simulatedDaysAged}d Warp
+                  </span>
+                  <button
+                    onClick={onResetSimulation}
+                    className="action-btn time-warp-btn"
+                    style={{ background: "rgba(239, 68, 68, 0.2)", borderColor: "rgba(239, 68, 68, 0.4)" }}
+                    title="Reset Simulation (Restore original database state)"
+                  >
+                    <RotateCcw size={16} />
+                    <span className="action-btn-text">Reset Warp</span>
+                  </button>
+                </>
+              ) : null}
               <button
                 onClick={() => onFastForwardTime(7)}
                 className="action-btn time-warp-btn"
@@ -101,10 +114,12 @@ export default function Header({
               </button>
 
               {/* Action Button - Disabled if not logged in */}
-              <button onClick={onOpenReport} className="btn-primary ripple-hover">
-                <Plus size={18} />
-                <span>Report Issue</span>
-              </button>
+              {!isUserAdmin(currentUser) && (
+                <button onClick={onOpenReport} className="btn-primary ripple-hover">
+                  <Plus size={18} />
+                  <span>Report Issue</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="auth-widget">
