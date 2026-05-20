@@ -22,8 +22,19 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
 
     if (tab === "admin") {
-      if (username.toLowerCase() === "admin" && password === "admin") {
+      const users = getStoredUsers();
+      const adminUser = users.find(
+        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password && u.role !== "citizen"
+      );
+      
+      const isSuperAdmin = username.toLowerCase() === "admin" && password === "admin";
+
+      if (isSuperAdmin) {
         onLoginSuccess({ name: "Government Administrator", role: "admin", username: "admin" });
+        onClose();
+        resetForm();
+      } else if (adminUser) {
+        onLoginSuccess(adminUser);
         onClose();
         resetForm();
       } else {
@@ -160,7 +171,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
           {tab === "admin" && (
             <p className="admin-notice">
-              ⚠️ Authorized Personnel Only. Use credentials <code>admin</code> / <code>admin</code>.
+              ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
             </p>
           )}
 

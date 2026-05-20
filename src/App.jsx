@@ -58,10 +58,22 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
     }
 
     if (tab === "admin") {
-      if (username.toLowerCase() === "admin" && password === "admin") {
+      const users = getStoredUsers();
+      const adminUser = users.find(
+        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password && u.role !== "citizen"
+      );
+      
+      const isSuperAdmin = username.toLowerCase() === "admin" && password === "admin";
+
+      if (isSuperAdmin) {
         setSuccess(true);
         setTimeout(() => {
           onLoginSuccess({ name: "Government Administrator", role: "admin", username: "admin" });
+        }, 800);
+      } else if (adminUser) {
+        setSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(adminUser);
         }, 800);
       } else {
         setError("Invalid administrator credentials.");
@@ -284,7 +296,7 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
 
                 {tab === "admin" && (
                   <p className="admin-notice">
-                    ⚠️ Authorized Personnel Only. Use credentials <code>admin</code> / <code>admin</code>.
+                    ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
                   </p>
                 )}
 
@@ -870,6 +882,26 @@ export default function App() {
     }, 2000);
   };
 
+  const handleResetSimulation = () => {
+    setIsTimeWarping(true);
+    setSimulatedDaysAged(0);
+    saveSimulatedAgedDays(0);
+    
+    // Clear localized complaints key to restore original pristine seed data state
+    localStorage.removeItem("urban_eye_complaints");
+    const fresh = getComplaints();
+    setComplaints(fresh);
+    
+    if (selectedComplaint) {
+      const activeObj = fresh.find(c => c.id === selectedComplaint.id);
+      setSelectedComplaint(activeObj || null);
+    }
+    
+    setTimeout(() => {
+      setIsTimeWarping(false);
+    }, 1500);
+  };
+
   // 4. Global Action Handlers
   const handleToggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -985,6 +1017,7 @@ export default function App() {
         onOpenAuth={() => setAuthModalOpen(true)}
         onFastForwardTime={handleFastForwardTime}
         simulatedDaysAged={simulatedDaysAged}
+        onResetSimulation={handleResetSimulation}
       />
 
       {/* Main Tab Routing */}

@@ -41,7 +41,6 @@ export default function ComplaintDetails({
   const [hierarchyVal, setHierarchyVal] = useState(complaint.hierarchyLevel || "panchayath");
   const [departmentVal, setDepartmentVal] = useState(complaint.category);
   const [escalationReason, setEscalationReason] = useState("");
-  const [agingResetReason, setAgingResetReason] = useState("");
   const [scheduleDate, setScheduleDate] = useState("");
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [resolutionImg, setResolutionImg] = useState("https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=800&auto=format&fit=crop&q=80"); // Preset resolved image
@@ -98,16 +97,6 @@ export default function ComplaintDetails({
     }
     return false;
   }, [currentUser, complaint]);
-
-  const canResetAging = useMemo(() => {
-    if (!currentUser) return false;
-    if (currentUser.role === "admin") return true;
-    if (currentUser.role.endsWith("_ADMIN")) {
-      const info = getAdminInfoFromRole(currentUser.role);
-      return info?.level === "state";
-    }
-    return false;
-  }, [currentUser]);
 
   useEffect(() => {
     // Reset status fields when complaint changes
@@ -264,30 +253,6 @@ export default function ComplaintDetails({
     setTimeout(() => {
       setActiveAdminAction(false);
     }, 1500);
-  };
-
-  const handleResetAging = (e) => {
-    e.preventDefault();
-    if (!agingResetReason.trim()) return;
-
-    const oldDateStr = new Date(complaint.createdAt).toLocaleString();
-    const newTimestamp = Date.now();
-
-    const logEntry = {
-      timestamp: newTimestamp,
-      byUser: currentUser.username,
-      details: `Aging reset counter. Submission timestamp updated from ${oldDateStr} to ${new Date(newTimestamp).toLocaleString()}. Reason: ${agingResetReason.trim()}`
-    };
-
-    const updated = {
-      ...complaint,
-      createdAt: newTimestamp,
-      escalationLogs: [...(complaint.escalationLogs || []), logEntry]
-    };
-
-    onUpdateComplaint([updated]);
-    setAgingResetReason("");
-    alert("Ticket age successfully reset!");
   };
 
   const toggleCoLocCheckbox = (id) => {
@@ -608,38 +573,7 @@ export default function ComplaintDetails({
             </div>
           )}
 
-          {/* Aging Reset Section (State/Super Admin Only) */}
-          {canAdminManage && canResetAging && (
-            <div className="admin-control-panel glass aging-reset-box">
-              <div className="admin-panel-header">
-                <Clock size={20} color="#d97706" />
-                <h3>Reset Ticket Aging Counter</h3>
-                <span className="admin-pill reset-pill" style={{ background: "#d97706" }}>CRITICAL CONTROL</span>
-              </div>
-              <p className="admin-instruction">
-                Reset the grievance age/timer to 0 (updates submission date to current time). This action will be trace logged.
-              </p>
-              <form onSubmit={handleResetAging} className="admin-form">
-                <div className="form-group">
-                  <label>Reason for Resetting Aging *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Awaiting court clearance / citizen requested extension"
-                    value={agingResetReason}
-                    onChange={(e) => setAgingResetReason(e.target.value)}
-                  />
-                </div>
-                <button 
-                  type="submit" 
-                  disabled={!agingResetReason.trim()}
-                  className="btn-reset-aging pulse-glow"
-                >
-                  Reset Ticket Age Counter
-                </button>
-              </form>
-            </div>
-          )}
+
 
           {/* Scoped Read-Only View Banner */}
           {currentUser && isUserAdmin(currentUser) && !canAdminManage && (
