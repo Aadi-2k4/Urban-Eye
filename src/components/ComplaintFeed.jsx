@@ -5,19 +5,9 @@ import ComplaintCard from "./ComplaintCard";
 import { districtNames } from "../utils/seedData";
 import { getAdminInfoFromRole } from "../utils/storage";
 
-const CATEGORIES = [
-  { id: "all", label: "All Grievances", emoji: "📋" },
-  { id: "pothole", label: "Road & Pothole", emoji: "🕳️" },
-  { id: "waste", label: "Waste Dumping", emoji: "🗑️" },
-  { id: "streetlight", label: "Streetlights", emoji: "💡" },
-  { id: "waterlogging", label: "Waterlogging", emoji: "🌊" },
-  { id: "property", label: "Encroachments", emoji: "🚧" },
-  { id: "other", label: "Other Issues", emoji: "📌" }
-];
-
 export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, currentUser }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedDistrict, setSelectedDistrict] = useState("all");
   const [selectedPriority, setSelectedPriority] = useState("all");
   const [sortBy, setSortBy] = useState("date"); // date | upvotes
@@ -36,11 +26,11 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
         (c.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.citizen || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesCategory = selectedCategory === "all" || c.category === selectedCategory;
       const matchesDistrict = selectedDistrict === "all" || c.district === selectedDistrict;
       const matchesPriority = selectedPriority === "all" || c.seriousness === selectedPriority;
+      const matchesStatus = selectedStatus === "all" || c.status === selectedStatus;
 
-      return matchesSearch && matchesCategory && matchesDistrict && matchesPriority;
+      return matchesSearch && matchesDistrict && matchesPriority && matchesStatus;
     });
 
     // 2. Sort
@@ -53,7 +43,7 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
     });
 
     return result;
-  }, [complaints, searchTerm, selectedCategory, selectedDistrict, selectedPriority, sortBy]);
+  }, [complaints, searchTerm, selectedStatus, selectedDistrict, selectedPriority, sortBy]);
 
   // Tab Filtering for Citizens
   const isMyComplaint = (c) => {
@@ -84,7 +74,7 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
   // Reset all filters
   const handleResetFilters = () => {
     setSearchTerm("");
-    setSelectedCategory("all");
+    setSelectedStatus("all");
     setSelectedDistrict("all");
     setSelectedPriority("all");
     setSortBy("date");
@@ -210,19 +200,26 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
           })}
         </div>
 
-        {/* Horizontal Category Chips */}
-        <div className="category-scroll-container">
-          <div className="category-scroll-inner">
-            {CATEGORIES.map((cat) => {
-              const isActive = selectedCategory === cat.id;
+        {/* Horizontal Status Chips */}
+        <div className="status-scroll-container">
+          <div className="status-scroll-inner">
+            {[
+              { id: "all", label: "All Statuses", emoji: "📋" },
+              { id: "submitted", label: "Submitted", emoji: "📥" },
+              { id: "reviewed", label: "Reviewed", emoji: "👀" },
+              { id: "scheduled", label: "Scheduled", emoji: "📅" },
+              { id: "inprogress", label: "In Progress", emoji: "🛠️" },
+              { id: "resolved", label: "Resolved", emoji: "✅" }
+            ].map((st) => {
+              const isActive = selectedStatus === st.id;
               return (
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`category-chip-btn ${isActive ? "active" : ""}`}
+                  key={st.id}
+                  onClick={() => setSelectedStatus(st.id)}
+                  className={`status-chip-btn ${isActive ? "active" : ""}`}
                 >
-                  <span className="chip-emoji">{cat.emoji}</span>
-                  <span>{cat.label}</span>
+                  <span className="chip-emoji">{st.emoji}</span>
+                  <span>{st.label}</span>
                 </button>
               );
             })}
@@ -235,7 +232,7 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
         <p className="results-count">
           Showing <strong>{displayComplaints.length}</strong> {displayComplaints.length === 1 ? "grievance" : "grievances"} in total
         </p>
-        {(searchTerm || selectedCategory !== "all" || selectedDistrict !== "all" || selectedPriority !== "all") && (
+        {(searchTerm || selectedStatus !== "all" || selectedDistrict !== "all" || selectedPriority !== "all") && (
           <button onClick={handleResetFilters} className="btn-reset-filters">
             Clear all filters
           </button>
@@ -502,18 +499,18 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
           border-bottom-color: var(--accent-color);
         }
 
-        .category-scroll-container {
+        .status-scroll-container {
           width: 100%;
           overflow-x: auto;
         }
 
-        .category-scroll-inner {
+        .status-scroll-inner {
           display: flex;
           gap: 8px;
           padding: 2px 0;
         }
 
-        .category-chip-btn {
+        .status-chip-btn {
           display: flex;
           align-items: center;
           gap: 6px;
@@ -529,13 +526,13 @@ export default function ComplaintFeed({ complaints, onComplaintClick, onUpvote, 
           transition: all var(--transition-fast);
         }
 
-        .category-chip-btn:hover {
+        .status-chip-btn:hover {
           background: var(--bg-input);
           border-color: var(--text-muted);
           color: var(--text-primary);
         }
 
-        .category-chip-btn.active {
+        .status-chip-btn.active {
           color: white;
           background: var(--accent-color);
           border-color: var(--accent-color);

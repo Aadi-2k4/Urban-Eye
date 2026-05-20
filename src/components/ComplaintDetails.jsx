@@ -1,5 +1,5 @@
 // ComplaintDetails.jsx - Grievance Detail Panel with E-Commerce Stepper, Comments, and Admin Schedule Batching
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
