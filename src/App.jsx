@@ -899,7 +899,7 @@ export default function App() {
     // Clear localized complaints key to restore original pristine seed data state
     localStorage.removeItem("urbaneye_complaints");
     const fresh = getComplaints();
-    const aged = runAgingEngine(fresh);
+    const aged = runAgingEngine(fresh, 0);
     setComplaints(aged);
     saveComplaints(aged);
     
