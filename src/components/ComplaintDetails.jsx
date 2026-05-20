@@ -167,6 +167,7 @@ export default function ComplaintDetails({
       ...complaint,
       status: statusVal,
       hierarchyLevel: hierarchyVal,
+      originalHierarchyLevel: hierarchyVal,
       category: departmentVal
     };
 

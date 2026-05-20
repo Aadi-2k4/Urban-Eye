@@ -794,6 +794,8 @@ export default function App() {
 
   // 2. Starvation Prevention & Aging Algorithm
   const runAgingEngine = (list) => {
+    const priorities = ["low", "medium", "high", "critical"];
+
     return list.map((c) => {
       if (c.status === "resolved") return c; // resolved issues are frozen
 
@@ -801,22 +803,26 @@ export default function App() {
       const ageMs = Date.now() - c.createdAt;
       const ageDays = ageMs / (24 * 3600 * 1000);
 
-      let newSeriousness = c.seriousness;
-      let newLevel = c.hierarchyLevel || "panchayath";
-      const logs = [...(c.escalationLogs || [])];
-
-      // Promotion Urgency Gates
-      if (ageDays > 15) {
-        newSeriousness = "critical";
-      } else if (ageDays > 10) {
-        if (c.seriousness === "low" || c.seriousness === "medium") {
-          newSeriousness = "high";
-        }
-      } else if (ageDays > 5) {
-        if (c.seriousness === "low") {
-          newSeriousness = "medium";
+      // Start with original seriousness/priority
+      let newSeriousness = c.originalSeriousness || c.seriousness || "medium";
+      
+      // Calculate priority progression (boosted by 1 level for every 7 days)
+      const steps = Math.floor(ageDays / 7);
+      if (steps > 0) {
+        let currentIndex = priorities.indexOf(newSeriousness);
+        if (currentIndex !== -1) {
+          const newIndex = Math.min(priorities.length - 1, currentIndex + steps);
+          newSeriousness = priorities[newIndex];
         }
       }
+
+      // Start with original hierarchy level manually set or defaulted
+      let newLevel = c.originalHierarchyLevel || c.hierarchyLevel || "panchayath";
+      
+      // Filter out previous automated system logs to avoid duplicates or orphans when resetting
+      const logs = (c.escalationLogs || []).filter(
+        log => log.byUser !== "System Automated Escalation Engine"
+      );
 
       // Automated Governance Escalation Gates
       if (ageDays > 10) {
@@ -824,7 +830,7 @@ export default function App() {
           logs.push({
             timestamp: Date.now(),
             byUser: "System Automated Escalation Engine",
-            details: `Automated escalation from ${newLevel.toUpperCase()} to STATE level due to unresolved ticket age (> 10 days).`
+            details: `Automated escalation to STATE level due to unresolved ticket age (> 10 days).`
           });
           newLevel = "state";
         }
@@ -890,10 +896,12 @@ export default function App() {
     // Clear localized complaints key to restore original pristine seed data state
     localStorage.removeItem("urban_eye_complaints");
     const fresh = getComplaints();
-    setComplaints(fresh);
+    const aged = runAgingEngine(fresh);
+    setComplaints(aged);
+    saveComplaints(aged);
     
     if (selectedComplaint) {
-      const activeObj = fresh.find(c => c.id === selectedComplaint.id);
+      const activeObj = aged.find(c => c.id === selectedComplaint.id);
       setSelectedComplaint(activeObj || null);
     }
     

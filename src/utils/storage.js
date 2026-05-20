@@ -170,6 +170,7 @@ const sanitizeComplaint = (c) => {
     
     // New fields
     hierarchyLevel: c.hierarchyLevel || HIERARCHY_LEVELS.PANCHAYATH,
+    originalHierarchyLevel: c.originalHierarchyLevel || c.hierarchyLevel || HIERARCHY_LEVELS.PANCHAYATH,
     assignedDepartment: department,
     escalationStatus: c.escalationStatus || "none",
     escalationLog: c.escalationLog || [],
