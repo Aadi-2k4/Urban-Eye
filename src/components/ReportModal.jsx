@@ -1,0 +1,712 @@
+// ReportModal.jsx - Citizen Reporting Form & WhatsApp Simulator Integration
+import React, { useState } from "react";
+import { X, Megaphone, Smartphone, MapPin, Sparkles, Image as ImageIcon, CheckCircle, ShieldAlert } from "lucide-react";
+import WhatsAppChatSim from "./WhatsAppChatSim";
+import { districtNames } from "../utils/seedData";
+
+// Unsplash presets for categories
+const CATEGORY_PRESETS = {
+  pothole: [
+    { name: "Pothole Close-up", url: "https://images.unsplash.com/photo-1599740831146-80cf4bde309b?w=800&auto=format&fit=crop&q=80" },
+    { name: "Damaged Highway", url: "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=800&auto=format&fit=crop&q=80" }
+  ],
+  waste: [
+    { name: "Waterway Litter", url: "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=800&auto=format&fit=crop&q=80" },
+    { name: "Roadside Garbage heap", url: "https://images.unsplash.com/photo-1605600611280-1a7435f9bad6?w=800&auto=format&fit=crop&q=80" }
+  ],
+  streetlight: [
+    { name: "Dark Streetlamp", url: "https://images.unsplash.com/photo-1509024640554-6cad6222b07e?w=800&auto=format&fit=crop&q=80" },
+    { name: "Unlit Junction", url: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=800&auto=format&fit=crop&q=80" }
+  ],
+  waterlogging: [
+    { name: "Road Waterlogging", url: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800&auto=format&fit=crop&q=80" },
+    { name: "Flooded Walkway", url: "https://images.unsplash.com/photo-1485848395967-65dff62dc35b?w=800&auto=format&fit=crop&q=80" }
+  ],
+  property: [
+    { name: "Obstruction Drum", url: "https://images.unsplash.com/photo-1584467541268-b040f83be3fd?w=800&auto=format&fit=crop&q=80" },
+    { name: "Dangling Cables", url: "https://images.unsplash.com/photo-1579762715118-a6f1d4b934f1?w=800&auto=format&fit=crop&q=80" }
+  ],
+  other: [
+    { name: "Broken Footpath", url: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80" },
+    { name: "Overgrown Vegetation", url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&auto=format&fit=crop&q=80" }
+  ]
+};
+
+// Simple dictionary for mock translation
+const MOCK_TRANSLATIONS = {
+  pothole: {
+    titleMl: "റോഡിൽ വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു",
+    descMl: "ഈ ഭാഗത്ത് റോഡിലെ ടാർ ഇളകി വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു. വലിയ അപകടഭീഷണിയാണ് ഇത് ഉണ്ടാക്കുന്നത്. അടിയന്തരമായി പരിഹരിക്കണം."
+  },
+  waste: {
+    titleMl: "പൊതുസ്ഥലത്ത് പ്ലാസ്റ്റിക് മാലിന്യങ്ങൾ അടിഞ്ഞുകൂടി കിടക്കുന്നു",
+    descMl: "ഇവിടെ റോഡരികിലും ജലാശയത്തിലും വൻതോതിൽ പ്ലാസ്റ്റിക് മാലിന്യങ്ങൾ കെട്ടിക്കിടക്കുന്നു. ദുർഗന്ധവും കൊതുക് ശല്യവും അതിരൂക്ഷമാണ്."
+  },
+  streetlight: {
+    titleMl: "തെരുവ് വിളക്ക് കേടാണ്, പ്രകാശം ലഭിക്കുന്നില്ല",
+    descMl: "തെരുവ് വിളക്ക് കഴിഞ്ഞ ഒരാഴ്ചയായി കത്തുന്നില്ല. രാത്രികാലങ്ങളിൽ കാൽനടയാത്രക്കാർക്കും വാഹനങ്ങൾക്കും വഴി കാണാൻ വലിയ ബുദ്ധിമുട്ടാണ്."
+  },
+  waterlogging: {
+    titleMl: "റോഡിൽ കനത്ത വെള്ളക്കെട്ട് രൂപപ്പെട്ടിരിക്കുന്നു",
+    descMl: "ചെറിയ മഴയിൽ പോലും റോഡിൽ ഓടകൾ അടഞ്ഞു കനത്ത വെള്ളക്കെട്ട് ഉണ്ടാകുന്നു. വാഹനങ്ങൾ അപകടത്തിൽ പെടാൻ സാധ്യതയുണ്ട്."
+  },
+  property: {
+    titleMl: "നടപ്പാതയിൽ വലിയ തടസ്സം ഉപേക്ഷിച്ച നിലയിൽ കാണപ്പെടുന്നു",
+    descMl: "പൊതു നടപ്പാത തടസ്സപ്പെടുത്തി വലിയ വസ്തുക്കൾ ഉപേക്ഷിച്ചിരിക്കുന്നു. കാൽനടയാത്രക്കാർ റോഡിലിറങ്ങി നടക്കേണ്ട അവസ്ഥയാണ്."
+  },
+  other: {
+    titleMl: "പൊതുജനങ്ങൾക്ക് അസൗകര്യമുണ്ടാക്കുന്ന അടിയന്തര പ്രശ്നം",
+    descMl: "ഈ ഭാഗത്തെ പ്രധാന സാമൂഹിക പ്രശ്നം അടിയന്തരമായി പരിഹരിച്ച് പൊതുജനങ്ങളുടെ സുരക്ഷ ഉറപ്പാക്കണം."
+  }
+};
+
+export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUser, onOpenAuth }) {
+  const [activeTab, setActiveTab] = useState("direct"); // direct | whatsapp
+  const [category, setCategory] = useState("pothole");
+  const [titleEn, setTitleEn] = useState("");
+  const [titleMl, setTitleMl] = useState("");
+  const [descEn, setDescEn] = useState("");
+  const [descMl, setDescMl] = useState("");
+  const [district, setDistrict] = useState("EKM");
+  const [location, setLocation] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [imageUrl, setImageUrl] = useState(CATEGORY_PRESETS.pothole[0].url);
+  const [seriousness, setSeriousness] = useState("medium");
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [translateLoading, setTranslateLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleCategoryChange = (cat) => {
+    setCategory(cat);
+    setImageUrl(CATEGORY_PRESETS[cat][0].url);
+  };
+
+  const handleFetchGPS = () => {
+    setGpsLoading(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLat(position.coords.latitude.toFixed(6));
+          setLng(position.coords.longitude.toFixed(6));
+          setGpsLoading(false);
+        },
+        (error) => {
+          // Standard mock fallback inside Kerala
+          const randomOffsets = {
+            EKM: { lat: 10.0159 + (Math.random() - 0.5) * 0.05, lng: 76.3419 + (Math.random() - 0.5) * 0.05 },
+            MPM: { lat: 11.1495 + (Math.random() - 0.5) * 0.05, lng: 75.9620 + (Math.random() - 0.5) * 0.05 },
+            TVM: { lat: 8.5367 + (Math.random() - 0.5) * 0.05, lng: 76.9427 + (Math.random() - 0.5) * 0.05 },
+            TSR: { lat: 10.5244 + (Math.random() - 0.5) * 0.05, lng: 76.2140 + (Math.random() - 0.5) * 0.05 },
+            KKD: { lat: 11.2588 + (Math.random() - 0.5) * 0.05, lng: 75.7690 + (Math.random() - 0.5) * 0.05 }
+          };
+          const coords = randomOffsets[district] || randomOffsets.EKM;
+          setLat(coords.lat.toFixed(6));
+          setLng(coords.lng.toFixed(6));
+          setGpsLoading(false);
+        },
+        { timeout: 5000 }
+      );
+    } else {
+      setLat("10.015900");
+      setLng("76.341900");
+      setGpsLoading(false);
+    }
+  };
+
+  const handleAutoTranslate = () => {
+    setTranslateLoading(true);
+    setTimeout(() => {
+      const trans = MOCK_TRANSLATIONS[category] || MOCK_TRANSLATIONS.other;
+      setTitleMl(trans.titleMl);
+      setDescMl(descEn ? `[തർജ്ജമ ചെയ്തത്]: ${descEn}\n\n${trans.descMl}` : trans.descMl);
+      setTranslateLoading(false);
+    }, 600);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!titleEn || !descEn || !location || !lat || !lng) {
+      alert("Please fill in all required fields and fetch GPS coordinates.");
+      return;
+    }
+
+    const newComplaint = {
+      id: "portal-" + Date.now(),
+      category,
+      titleEn,
+      titleMl: titleMl || titleEn,
+      descEn,
+      descMl: descMl || descEn,
+      location,
+      district,
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
+      image: imageUrl,
+      createdAt: Date.now(),
+      status: "submitted",
+      seriousness,
+      originalSeriousness: seriousness,
+      citizen: currentUser ? currentUser.name : "Verified Citizen",
+      upvotes: 0,
+      upvotedBy: [],
+      comments: []
+    };
+
+    onNewComplaint(newComplaint);
+    setSuccess(true);
+    setTimeout(() => {
+      setSuccess(false);
+      onClose();
+      resetForm();
+    }, 1500);
+  };
+
+  const resetForm = () => {
+    setTitleEn("");
+    setTitleMl("");
+    setDescEn("");
+    setDescMl("");
+    setLocation("");
+    setLat("");
+    setLng("");
+    setCategory("pothole");
+    setImageUrl(CATEGORY_PRESETS.pothole[0].url);
+    setSeriousness("medium");
+  };
+
+  return (
+    <div className="report-overlay">
+      <div className={`report-modal glass ${activeTab === "whatsapp" ? "wa-mode" : ""}`}>
+        {/* Header */}
+        <div className="report-header">
+          <div className="header-title-box">
+            <Megaphone size={20} color="var(--accent-color)" />
+            <h3>Submit Public Grievance</h3>
+          </div>
+          <button className="close-btn" onClick={onClose} aria-label="Close Grievance Modal">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tab Selection */}
+        <div className="report-tabs">
+          <button
+            onClick={() => setActiveTab("direct")}
+            className={`report-tab-btn ${activeTab === "direct" ? "active" : ""}`}
+          >
+            <Megaphone size={14} />
+            <span>Direct Web Grievance</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("whatsapp")}
+            className={`report-tab-btn ${activeTab === "whatsapp" ? "active" : ""}`}
+          >
+            <Smartphone size={14} />
+            <span>Secure WhatsApp Bot</span>
+          </button>
+        </div>
+
+        {/* Content Tabs */}
+        {activeTab === "whatsapp" ? (
+          <div className="tab-content wa-chat-tab">
+            <WhatsAppChatSim 
+              currentUser={currentUser} 
+              onNewComplaint={(comp) => {
+                onNewComplaint(comp);
+                onClose();
+              }} 
+            />
+          </div>
+        ) : (
+          <div className="tab-content form-tab">
+            {!currentUser ? (
+              <div className="auth-alert-panel glass">
+                <ShieldAlert size={48} color="var(--color-seriousness-high)" />
+                <h4>Citizen Identity Verification Required</h4>
+                <p>
+                  To eliminate spam and anonymous/false complaints, citizens must be verified with an authenticated session before filing formal public grievances.
+                </p>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenAuth();
+                  }}
+                  className="btn-auth-verify pulse-glow"
+                >
+                  Verify Your Citizen Identity Now
+                </button>
+              </div>
+            ) : success ? (
+              <div className="success-panel glass">
+                <CheckCircle size={56} color="var(--color-resolved)" />
+                <h4>Complaint Filed Successfully!</h4>
+                <p>Ref: #CP-{Date.now().toString().slice(-4)}</p>
+                <p className="subtext">Adding to the live tracker, seeding maps, and routing resolution teams...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="grievance-form">
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Category</label>
+                    <select value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
+                      <option value="pothole">Road & Pothole Damage</option>
+                      <option value="waste">Public Waste & Litter</option>
+                      <option value="streetlight">Broken Streetlights</option>
+                      <option value="waterlogging">Waterlogging & Drainage</option>
+                      <option value="property">Obstructions & Encroachment</option>
+                      <option value="other">Other Grievances</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Issue Seriousness</label>
+                    <select value={seriousness} onChange={(e) => setSeriousness(e.target.value)}>
+                      <option value="low">Low (Resolve within 15 Days)</option>
+                      <option value="medium">Medium (Resolve within 10 Days)</option>
+                      <option value="high">High (Resolve within 5 Days)</option>
+                      <option value="critical">Critical (Immediate - Resolve in 2 Days)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Complaint Title (English) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Large pothole near Kakkanad Civil Station"
+                    value={titleEn}
+                    onChange={(e) => setTitleEn(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <div className="label-with-action">
+                    <label>Complaint Title (Malayalam)</label>
+                    <button type="button" className="btn-action-sparkle" onClick={handleAutoTranslate}>
+                      <Sparkles size={12} />
+                      <span>{translateLoading ? "Translating..." : "Auto-Translate"}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. റോഡിൽ വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു"
+                    value={titleMl}
+                    onChange={(e) => setTitleMl(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Detailed Description (English) *</label>
+                  <textarea
+                    required
+                    rows={3}
+                    placeholder="Provide depth, visual cues, and safety threats regarding the complaint..."
+                    value={descEn}
+                    onChange={(e) => setDescEn(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Detailed Description (Malayalam)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="സംഭവം കൂടുതൽ വ്യക്തമാക്കുക..."
+                    value={descMl}
+                    onChange={(e) => setDescMl(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>District *</label>
+                    <select value={district} onChange={(e) => setDistrict(e.target.value)}>
+                      {Object.entries(districtNames).map(([code, names]) => (
+                        <option key={code} value={code}>
+                          {names.nameEn} ({names.nameMl})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Specific Landmark / Address *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Near HDFC Bank, Kakkanad Round"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row-gps">
+                  <div className="form-group">
+                    <label>GPS Latitude *</label>
+                    <input type="text" placeholder="10.015900" required value={lat} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label>GPS Longitude *</label>
+                    <input type="text" placeholder="76.341900" required value={lng} readOnly />
+                  </div>
+                  <button type="button" className="btn-gps" onClick={handleFetchGPS} disabled={gpsLoading}>
+                    <MapPin size={16} />
+                    <span>{gpsLoading ? "Fetching..." : "Fetch GPS"}</span>
+                  </button>
+                </div>
+
+                {/* Grid of Unsplash category presets */}
+                <div className="form-group">
+                  <label>Choose Grievance Photo Attachment</label>
+                  <div className="preset-images-grid">
+                    {CATEGORY_PRESETS[category].map((preset, idx) => (
+                      <div
+                        key={idx}
+                        className={`preset-img-card ${imageUrl === preset.url ? "selected" : ""}`}
+                        onClick={() => setImageUrl(preset.url)}
+                      >
+                        <img src={preset.url} alt={preset.name} />
+                        <span className="preset-img-tag">{preset.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-submit-grievance ripple-hover pulse-glow">
+                  <CheckCircle size={18} />
+                  <span>Submit grievance for verification</span>
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        .report-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(5, 7, 16, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+        }
+
+        .report-modal {
+          width: 100%;
+          max-width: 680px;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          padding: 24px;
+          transition: max-width var(--transition-normal);
+        }
+
+        .report-modal.wa-mode {
+          max-width: 860px;
+        }
+
+        .report-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 18px;
+          flex-shrink: 0;
+        }
+
+        .header-title-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .header-title-box h3 {
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .close-btn {
+          color: var(--text-muted);
+          transition: color var(--transition-fast);
+          padding: 4px;
+        }
+
+        .close-btn:hover {
+          color: var(--text-primary);
+        }
+
+        .report-tabs {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 10px;
+          padding: 4px;
+          border: 1px solid var(--border-color);
+          margin-bottom: 20px;
+          flex-shrink: 0;
+        }
+
+        .report-tab-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 10px 4px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          transition: all var(--transition-fast);
+        }
+
+        .report-tab-btn.active {
+          color: var(--text-primary);
+          background: var(--bg-input);
+          border: 1px solid var(--border-color);
+        }
+
+        .tab-content {
+          flex: 1;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .auth-alert-panel, .success-panel {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 40px 24px;
+          background: var(--bg-secondary);
+          gap: 16px;
+        }
+
+        .auth-alert-panel h4 {
+          font-size: 18px;
+          color: var(--text-primary);
+        }
+
+        .auth-alert-panel p {
+          font-size: 13px;
+          color: var(--text-secondary);
+          line-height: 1.5;
+          max-width: 440px;
+        }
+
+        .btn-auth-verify {
+          background: var(--accent-color);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 13.5px;
+          cursor: pointer;
+          transition: background var(--transition-fast);
+        }
+
+        .btn-auth-verify:hover {
+          background: var(--accent-hover);
+        }
+
+        .success-panel h4 {
+          font-size: 20px;
+          color: var(--color-resolved);
+        }
+
+        .success-panel p {
+          font-size: 14px;
+          color: var(--text-primary);
+          font-weight: 500;
+        }
+
+        .success-panel .subtext {
+          font-size: 12px;
+          color: var(--text-secondary);
+        }
+
+        .grievance-form {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding-bottom: 12px;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .form-group label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+
+        .label-with-action {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .btn-action-sparkle {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: var(--accent-glow);
+          color: var(--accent-color);
+          border: 1px solid rgba(99, 102, 241, 0.25);
+          border-radius: 4px;
+          padding: 2px 6px;
+          font-size: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .btn-action-sparkle:hover {
+          background: rgba(99, 102, 241, 0.2);
+          border-color: var(--accent-color);
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+          width: 100%;
+          background: var(--bg-input);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-size: 13.5px;
+          transition: border var(--transition-fast);
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+          outline: none;
+          border-color: var(--border-focus);
+        }
+
+        .form-row-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        .form-row-gps {
+          display: grid;
+          grid-template-columns: 1fr 1fr auto;
+          gap: 16px;
+          align-items: flex-end;
+        }
+
+        .btn-gps {
+          height: 38px;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 0 16px;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .btn-gps:hover {
+          border-color: var(--accent-color);
+          background: var(--bg-input);
+        }
+
+        .preset-images-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-top: 4px;
+        }
+
+        .preset-img-card {
+          position: relative;
+          height: 80px;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 2px solid transparent;
+          cursor: pointer;
+          transition: border var(--transition-fast), transform var(--transition-fast);
+        }
+
+        .preset-img-card:hover {
+          transform: translateY(-1px);
+        }
+
+        .preset-img-card img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .preset-img-tag {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0, 0, 0, 0.6);
+          color: white;
+          font-size: 10px;
+          padding: 4px;
+          text-align: center;
+          font-weight: 500;
+        }
+
+        .preset-img-card.selected {
+          border-color: var(--accent-color);
+          box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .btn-submit-grievance {
+          background: var(--accent-color);
+          color: white;
+          padding: 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          margin-top: 10px;
+          transition: background var(--transition-fast);
+        }
+
+        .btn-submit-grievance:hover {
+          background: var(--accent-hover);
+        }
+
+        @media (max-width: 768px) {
+          .form-row-2, .form-row-gps {
+            grid-template-columns: 1fr;
+          }
+          
+          .btn-gps {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
