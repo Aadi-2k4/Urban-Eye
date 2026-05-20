@@ -106,7 +106,6 @@ export default function ComplaintDetails({
     setResolutionNotes(complaint.resolutionNotes || "");
     setResolutionImg(complaint.resolutionImage || "https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=800&auto=format&fit=crop&q=80");
     setEscalationReason("");
-    setAgingResetReason("");
     
     // Auto calculate suggested schedule date
     const offset = getSchedulingOffset(complaint.seriousness);

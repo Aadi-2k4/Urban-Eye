@@ -787,21 +787,24 @@ export default function App() {
 
     // Load complaints and run the aging engine
     const rawComplaints = getComplaints();
-    const agedComplaints = runAgingEngine(rawComplaints);
+    const agedComplaints = runAgingEngine(rawComplaints, agedDays);
     setComplaints(agedComplaints);
     saveComplaints(agedComplaints);
   }, []);
 
   // 2. Starvation Prevention & Aging Algorithm
-  const runAgingEngine = (list) => {
+  const runAgingEngine = (list, customAgedDays = null) => {
     const priorities = ["low", "medium", "high", "critical"];
+    const targetAgedDays = customAgedDays !== null ? customAgedDays : simulatedDaysAged;
 
     return list.map((c) => {
       if (c.status === "resolved") return c; // resolved issues are frozen
 
-      // Calculate elapsed age in milliseconds
-      const ageMs = Date.now() - c.createdAt;
-      const ageDays = ageMs / (24 * 3600 * 1000);
+      // Calculate effective simulated age in days:
+      const isPreSeeded = typeof c.id === "string" && /^c\d+$/.test(c.id);
+      const ageDays = isPreSeeded 
+        ? targetAgedDays 
+        : Math.max(0, targetAgedDays - (c.simulatedDaysAtCreation || 0));
 
       // Start with original seriousness/priority
       let newSeriousness = c.originalSeriousness || c.seriousness || "medium";
@@ -872,7 +875,7 @@ export default function App() {
     });
 
     // Feed through the aging promotion checker
-    const aged = runAgingEngine(shifted);
+    const aged = runAgingEngine(shifted, newAgedDays);
     setComplaints(aged);
     saveComplaints(aged);
 
@@ -930,8 +933,12 @@ export default function App() {
   };
 
   const handleNewComplaintSubmit = (newComp) => {
+    const enriched = {
+      ...newComp,
+      simulatedDaysAtCreation: simulatedDaysAged
+    };
     // Run aging check on the fresh submission list
-    const updated = [newComp, ...complaints];
+    const updated = [enriched, ...complaints];
     const aged = runAgingEngine(updated);
     setComplaints(aged);
     saveComplaints(aged);
