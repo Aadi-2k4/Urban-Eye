@@ -8,6 +8,7 @@ import {
   Send, ShieldAlert, CheckCircle, Truck, Eye, PenTool, Sparkles, Map as MapIcon, Route
 } from "lucide-react";
 import { districtNames } from "../utils/seedData";
+import { getAdminInfoFromRole, isUserAdmin } from "../utils/storage";
 
 // Fix Leaflet marker icon asset issue in React
 const customIcon = new L.Icon({
@@ -37,6 +38,10 @@ export default function ComplaintDetails({
 }) {
   const [newComment, setNewComment] = useState("");
   const [statusVal, setStatusVal] = useState(complaint.status);
+  const [hierarchyVal, setHierarchyVal] = useState(complaint.hierarchyLevel || "panchayath");
+  const [departmentVal, setDepartmentVal] = useState(complaint.category);
+  const [escalationReason, setEscalationReason] = useState("");
+  const [agingResetReason, setAgingResetReason] = useState("");
   const [scheduleDate, setScheduleDate] = useState("");
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [resolutionImg, setResolutionImg] = useState("https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=800&auto=format&fit=crop&q=80"); // Preset resolved image
@@ -56,11 +61,47 @@ export default function ComplaintDetails({
     }
   };
 
+  const canAdminManage = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === "admin") return true;
+    if (!currentUser.role.endsWith("_ADMIN")) return false;
+
+    const info = getAdminInfoFromRole(currentUser.role);
+    if (!info) return false;
+
+    // Check category/department match
+    if (complaint.category !== info.department) return false;
+
+    // Check level match
+    if (info.level === "panchayath") {
+      return complaint.hierarchyLevel === "panchayath" && complaint.panchayath === info.scope;
+    } else if (info.level === "district") {
+      return complaint.district === info.scope;
+    } else if (info.level === "state") {
+      return true;
+    }
+    return false;
+  }, [currentUser, complaint]);
+
+  const canResetAging = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === "admin") return true;
+    if (currentUser.role.endsWith("_ADMIN")) {
+      const info = getAdminInfoFromRole(currentUser.role);
+      return info?.level === "state";
+    }
+    return false;
+  }, [currentUser]);
+
   useEffect(() => {
     // Reset status fields when complaint changes
     setStatusVal(complaint.status);
+    setHierarchyVal(complaint.hierarchyLevel || "panchayath");
+    setDepartmentVal(complaint.category);
     setResolutionNotes(complaint.resolutionNotes || "");
     setResolutionImg(complaint.resolutionImage || "https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=800&auto=format&fit=crop&q=80");
+    setEscalationReason("");
+    setAgingResetReason("");
     
     // Auto calculate suggested schedule date
     const offset = getSchedulingOffset(complaint.seriousness);
@@ -106,19 +147,62 @@ export default function ComplaintDetails({
   const handleAdminActionApply = (e) => {
     e.preventDefault();
 
+    if ((hierarchyVal !== (complaint.hierarchyLevel || "panchayath") || departmentVal !== complaint.category) && !escalationReason.trim()) {
+      alert("Please provide a reason for manual escalation or re-routing.");
+      return;
+    }
+
     const updates = [];
+    const logs = [...(complaint.escalationLogs || [])];
+    const timestamp = Date.now();
+    const updater = currentUser ? currentUser.username : "Verified Admin";
 
     // Prepare updated complaint
     const updated = {
       ...complaint,
-      status: statusVal
+      status: statusVal,
+      hierarchyLevel: hierarchyVal,
+      category: departmentVal
     };
 
-    let logMessage = `Status changed to ${statusVal.toUpperCase()} by Administrator.`;
+    // 1. Status change log
+    if (statusVal !== complaint.status) {
+      logs.push({
+        timestamp,
+        byUser: updater,
+        details: `Status updated from ${complaint.status.toUpperCase()} to ${statusVal.toUpperCase()}.`
+      });
+    }
+
+    // 2. Hierarchy level change log
+    if (hierarchyVal !== (complaint.hierarchyLevel || "panchayath")) {
+      logs.push({
+        timestamp,
+        byUser: updater,
+        details: `Hierarchy level manually escalated from ${(complaint.hierarchyLevel || "panchayath").toUpperCase()} to ${hierarchyVal.toUpperCase()}.${escalationReason ? ` Reason: ${escalationReason}` : ""}`
+      });
+    }
+
+    // 3. Department change log
+    if (departmentVal !== complaint.category) {
+      logs.push({
+        timestamp,
+        byUser: updater,
+        details: `Department re-routed from ${complaint.category.toUpperCase()} to ${departmentVal.toUpperCase()}.${escalationReason ? ` Reason: ${escalationReason}` : ""}`
+      });
+    }
+
+    // Assign final logs
+    updated.escalationLogs = logs;
 
     if (statusVal === "scheduled") {
       updated.scheduledDate = scheduleDate;
-      logMessage = `Scheduled for resolution on ${scheduleDate}.`;
+      // Also log scheduling details
+      logs.push({
+        timestamp,
+        byUser: updater,
+        details: `Grievance scheduled for resolution on ${scheduleDate}.`
+      });
       
       // Handle co-location batching
       const checkedIds = Object.keys(coLocSelected).filter(id => coLocSelected[id]);
@@ -126,15 +210,22 @@ export default function ComplaintDetails({
         checkedIds.forEach(id => {
           const target = allComplaints.find(c => c.id === id);
           if (target) {
+            // Also append scheduling logs to batched ticket!
+            const nbLogs = [...(target.escalationLogs || [])];
+            nbLogs.push({
+              timestamp,
+              byUser: updater,
+              details: `Scheduled automatically via Route Optimizer with main ticket #CP-${complaint.id.slice(-4)}`
+            });
             updates.push({
               ...target,
               status: "scheduled",
               scheduledDate: scheduleDate,
-              resolutionNotes: `Scheduled automatically via Route Optimizer with main ticket #CP-${complaint.id.slice(-4)}`
+              resolutionNotes: `Scheduled automatically via Route Optimizer with main ticket #CP-${complaint.id.slice(-4)}`,
+              escalationLogs: nbLogs
             });
           }
         });
-        logMessage += ` Batched & scheduled ${checkedIds.length} nearby issues.`;
       }
     }
 
@@ -142,15 +233,45 @@ export default function ComplaintDetails({
       updated.resolvedDate = new Date().toISOString().split('T')[0];
       updated.resolutionNotes = resolutionNotes || "Resolved successfully.";
       updated.resolutionImage = resolutionImg;
+      logs.push({
+        timestamp,
+        byUser: updater,
+        details: `Grievance marked as RESOLVED. Notes: ${resolutionNotes || "Resolved successfully."}`
+      });
     }
 
     updates.push(updated);
 
     onUpdateComplaint(updates);
     setActiveAdminAction(true);
+    setEscalationReason("");
     setTimeout(() => {
       setActiveAdminAction(false);
     }, 1500);
+  };
+
+  const handleResetAging = (e) => {
+    e.preventDefault();
+    if (!agingResetReason.trim()) return;
+
+    const oldDateStr = new Date(complaint.createdAt).toLocaleString();
+    const newTimestamp = Date.now();
+
+    const logEntry = {
+      timestamp: newTimestamp,
+      byUser: currentUser.username,
+      details: `Aging reset counter. Submission timestamp updated from ${oldDateStr} to ${new Date(newTimestamp).toLocaleString()}. Reason: ${agingResetReason.trim()}`
+    };
+
+    const updated = {
+      ...complaint,
+      createdAt: newTimestamp,
+      escalationLogs: [...(complaint.escalationLogs || []), logEntry]
+    };
+
+    onUpdateComplaint([updated]);
+    setAgingResetReason("");
+    alert("Ticket age successfully reset!");
   };
 
   const toggleCoLocCheckbox = (id) => {
@@ -170,7 +291,7 @@ export default function ComplaintDetails({
               {complaint.seriousness.toUpperCase()}
             </span>
             <span className="location-crumb">
-              {complaint.location} • {districtNames[complaint.district]?.nameEn || complaint.district}
+              {complaint.location} • {districtNames[complaint.district]?.nameEn || complaint.district} • <span className="hierarchy-pill">{(complaint.hierarchyLevel || "panchayath").toUpperCase()} LEVEL</span>
             </span>
           </div>
           <button className="close-detail-btn" onClick={onClose}>
@@ -240,6 +361,30 @@ export default function ComplaintDetails({
             )}
           </div>
 
+          {/* Escalation & Status History Logs */}
+          {complaint.escalationLogs && complaint.escalationLogs.length > 0 && (
+            <div className="escalation-logs-section glass">
+              <div className="logs-header">
+                <Route size={16} color="var(--accent-color)" />
+                <h4>Escalation & Routing History Log</h4>
+              </div>
+              <div className="logs-timeline">
+                {complaint.escalationLogs.map((log, idx) => (
+                  <div key={idx} className="log-timeline-item">
+                    <div className="log-timeline-badge" />
+                    <div className="log-timeline-content">
+                      <div className="log-timeline-meta">
+                        <span className="log-user">👤 {log.byUser}</span>
+                        <span className="log-time">🕒 {new Date(log.timestamp).toLocaleString()}</span>
+                      </div>
+                      <p className="log-text">{log.details}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Core Grievance Content & Interactive Map Grid */}
           <div className="detail-body-grid">
             <div className="body-left-grievance">
@@ -301,16 +446,16 @@ export default function ComplaintDetails({
             </div>
           </div>
 
-          {/* Grievance Administration Panel (Admins Only) */}
-          {currentUser && currentUser.role === "admin" && (
+          {/* Grievance Administration Panel (Authorized Admins Only) */}
+          {canAdminManage && (
             <div className="admin-control-panel glass">
               <div className="admin-panel-header">
                 <ShieldAlert size={20} color="var(--accent-color)" />
                 <h3>Grievance Administration Desk</h3>
-                <span className="admin-pill">ADMIN VIEW</span>
+                <span className="admin-pill">ADMIN PANEL</span>
               </div>
               <p className="admin-instruction">
-                Schedule maintenance, advance e-commerce tracker stages, or batch optimize routes using spatial proximity detection.
+                Schedule maintenance, manually escalate hierarchy level, re-route department, or batch optimize routes.
               </p>
 
               <form onSubmit={handleAdminActionApply} className="admin-form">
@@ -326,6 +471,29 @@ export default function ComplaintDetails({
                     </select>
                   </div>
 
+                  <div className="form-group">
+                    <label>Hierarchy Governance Level</label>
+                    <select value={hierarchyVal} onChange={(e) => setHierarchyVal(e.target.value)}>
+                      <option value="panchayath">Panchayath Level</option>
+                      <option value="district">District Level</option>
+                      <option value="state">State Level</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Department / Category Routing</label>
+                    <select value={departmentVal} onChange={(e) => setDepartmentVal(e.target.value)}>
+                      <option value="pothole">Road & Pothole Damage</option>
+                      <option value="waste">Public Waste & Litter</option>
+                      <option value="streetlight">Broken Streetlights</option>
+                      <option value="waterlogging">Waterlogging & Drainage</option>
+                      <option value="property">Obstructions & Encroachment</option>
+                      <option value="other">Other Grievances</option>
+                    </select>
+                  </div>
+
                   {statusVal === "scheduled" && (
                     <div className="form-group animate-fade-in">
                       <label>Suggested Resolution Date (Seriousness suggestions applied)</label>
@@ -338,6 +506,19 @@ export default function ComplaintDetails({
                     </div>
                   )}
                 </div>
+
+                {(hierarchyVal !== (complaint.hierarchyLevel || "panchayath") || departmentVal !== complaint.category) && (
+                  <div className="form-group animate-fade-in">
+                    <label>Reason for Escalation / Re-routing *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Requires district machinery deployment / wrong department assigned"
+                      value={escalationReason}
+                      onChange={(e) => setEscalationReason(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 {/* Co-Location Optimizer suggestions */}
                 {statusVal === "scheduled" && nearbyComplaints.length > 0 && (
@@ -404,10 +585,57 @@ export default function ComplaintDetails({
                 <button type="submit" className="btn-apply-admin-action ripple-hover">
                   <Sparkles size={16} />
                   <span>
-                    {activeAdminAction ? "Success: Action Applied!" : "Apply Grievance Action & Batch Routes"}
+                    {activeAdminAction ? "Success: Action Applied!" : "Apply Grievance Action & Escalation"}
                   </span>
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* Aging Reset Section (State/Super Admin Only) */}
+          {canAdminManage && canResetAging && (
+            <div className="admin-control-panel glass aging-reset-box">
+              <div className="admin-panel-header">
+                <Clock size={20} color="#d97706" />
+                <h3>Reset Ticket Aging Counter</h3>
+                <span className="admin-pill reset-pill" style={{ background: "#d97706" }}>CRITICAL CONTROL</span>
+              </div>
+              <p className="admin-instruction">
+                Reset the grievance age/timer to 0 (updates submission date to current time). This action will be trace logged.
+              </p>
+              <form onSubmit={handleResetAging} className="admin-form">
+                <div className="form-group">
+                  <label>Reason for Resetting Aging *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Awaiting court clearance / citizen requested extension"
+                    value={agingResetReason}
+                    onChange={(e) => setAgingResetReason(e.target.value)}
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={!agingResetReason.trim()}
+                  className="btn-reset-aging pulse-glow"
+                >
+                  Reset Ticket Age Counter
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Scoped Read-Only View Banner */}
+          {currentUser && isUserAdmin(currentUser) && !canAdminManage && (
+            <div className="admin-control-panel glass read-only-panel">
+              <div className="admin-panel-header">
+                <ShieldAlert size={20} color="var(--color-seriousness-high)" />
+                <h3>Read-only Scoped View</h3>
+                <span className="admin-pill read-only" style={{ background: "var(--color-seriousness-high)" }}>RESTRICTED</span>
+              </div>
+              <p className="admin-instruction">
+                This grievance falls outside your assigned department category or geographic jurisdiction scope. You have read-only access to view logs and feedback.
+              </p>
             </div>
           )}
 
@@ -1128,6 +1356,118 @@ export default function ComplaintDetails({
           .detail-body-grid {
             grid-template-columns: 1fr;
           }
+        }
+
+        .hierarchy-pill {
+          background: rgba(255, 255, 255, 0.15);
+          color: var(--text-primary);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-weight: 700;
+          font-size: 10px;
+          margin-left: 6px;
+        }
+
+        .escalation-logs-section {
+          padding: 20px;
+          background: rgba(0, 0, 0, 0.12);
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+        }
+
+        .logs-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .logs-header h4 {
+          font-size: 14px;
+          color: var(--text-primary);
+          margin: 0;
+        }
+
+        .logs-timeline {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          border-left: 2px solid var(--border-color);
+          padding-left: 16px;
+          margin-left: 8px;
+          text-align: left;
+        }
+
+        .log-timeline-item {
+          position: relative;
+        }
+
+        .log-timeline-badge {
+          position: absolute;
+          left: -22px;
+          top: 6px;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--accent-color);
+          border: 2px solid var(--bg-card);
+        }
+
+        .log-timeline-content {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          padding: 10px 12px;
+        }
+
+        .log-timeline-meta {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: var(--text-secondary);
+          margin-bottom: 4px;
+        }
+
+        .log-text {
+          font-size: 12.5px;
+          color: var(--text-primary);
+          line-height: 1.4;
+          margin: 0;
+        }
+
+        .aging-reset-box {
+          padding: 16px;
+          background: rgba(217, 119, 6, 0.04) !important;
+          border: 1px dashed rgba(217, 119, 6, 0.3) !important;
+          margin-top: 16px;
+        }
+
+        .btn-reset-aging {
+          background: #d97706;
+          color: white;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background var(--transition-fast);
+          margin-top: 8px;
+          width: 100%;
+        }
+
+        .btn-reset-aging:hover:not(:disabled) {
+          background: #b45309;
+        }
+
+        .btn-reset-aging:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .read-only-panel {
+          background: rgba(239, 68, 68, 0.03) !important;
+          border-color: rgba(239, 68, 68, 0.2) !important;
         }
       `}</style>
     </div>

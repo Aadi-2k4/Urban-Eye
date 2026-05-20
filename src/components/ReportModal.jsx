@@ -62,6 +62,7 @@ const MOCK_TRANSLATIONS = {
 
 export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUser, onOpenAuth }) {
   const [activeTab, setActiveTab] = useState("direct"); // direct | whatsapp
+  const [step, setStep] = useState(1); // 1 | 2 | 3
   const [category, setCategory] = useState("pothole");
   const [titleEn, setTitleEn] = useState("");
   const [titleMl, setTitleMl] = useState("");
@@ -96,7 +97,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
         (error) => {
           // Standard mock fallback inside Kerala
           const randomOffsets = {
-            EKM: { lat: 10.0159 + (Math.random() - 0.5) * 0.05, lng: 76.3419 + (Math.random() - 0.5) * 0.05 },
+            EKM: { lat: 9.9074 + (Math.random() - 0.5) * 0.05, lng: 76.3059 + (Math.random() - 0.5) * 0.05 },
             MPM: { lat: 11.1495 + (Math.random() - 0.5) * 0.05, lng: 75.9620 + (Math.random() - 0.5) * 0.05 },
             TVM: { lat: 8.5367 + (Math.random() - 0.5) * 0.05, lng: 76.9427 + (Math.random() - 0.5) * 0.05 },
             TSR: { lat: 10.5244 + (Math.random() - 0.5) * 0.05, lng: 76.2140 + (Math.random() - 0.5) * 0.05 },
@@ -124,6 +125,22 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
       setDescMl(descEn ? `[തർജ്ജമ ചെയ്തത്]: ${descEn}\n\n${trans.descMl}` : trans.descMl);
       setTranslateLoading(false);
     }, 600);
+  };
+
+  const handleNextStep1 = () => {
+    if (!titleEn.trim() || !descEn.trim()) {
+      alert("Please fill in the English Title and English Description.");
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleNextStep2 = () => {
+    if (!location.trim() || !lat || !lng) {
+      alert("Please specify the Landmark and fetch GPS coordinates.");
+      return;
+    }
+    setStep(3);
   };
 
   const handleSubmit = (e) => {
@@ -176,6 +193,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
     setCategory("pothole");
     setImageUrl(CATEGORY_PRESETS.pothole[0].url);
     setSeriousness("medium");
+    setStep(1);
   };
 
   return (
@@ -219,6 +237,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
                 onNewComplaint(comp);
                 onClose();
               }} 
+              resetForm={resetForm}
             />
           </div>
         ) : (
@@ -248,140 +267,226 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
                 <p className="subtext">Adding to the live tracker, seeding maps, and routing resolution teams...</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="grievance-form">
-                <div className="form-row-2">
-                  <div className="form-group">
-                    <label>Category</label>
-                    <select value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
-                      <option value="pothole">Road & Pothole Damage</option>
-                      <option value="waste">Public Waste & Litter</option>
-                      <option value="streetlight">Broken Streetlights</option>
-                      <option value="waterlogging">Waterlogging & Drainage</option>
-                      <option value="property">Obstructions & Encroachment</option>
-                      <option value="other">Other Grievances</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Issue Seriousness</label>
-                    <select value={seriousness} onChange={(e) => setSeriousness(e.target.value)}>
-                      <option value="low">Low (Resolve within 15 Days)</option>
-                      <option value="medium">Medium (Resolve within 10 Days)</option>
-                      <option value="high">High (Resolve within 5 Days)</option>
-                      <option value="critical">Critical (Immediate - Resolve in 2 Days)</option>
-                    </select>
-                  </div>
+              <div className="wizard-form-container">
+                {/* Stepper Progress Indicator */}
+                <div className="stepper-container">
+                  {[
+                    { number: 1, label: "Details" },
+                    { number: 2, label: "Location" },
+                    { number: 3, label: "Submit" }
+                  ].map((s) => (
+                    <div key={s.number} className={`step-indicator ${step === s.number ? "active" : step > s.number ? "completed" : ""}`}>
+                      <div className="step-circle">{step > s.number ? "✓" : s.number}</div>
+                      <span className="step-label">{s.label}</span>
+                      {s.number < 3 && <div className="step-line" />}
+                    </div>
+                  ))}
                 </div>
 
-                <div className="form-group">
-                  <label>Complaint Title (English) *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Large pothole near Kakkanad Civil Station"
-                    value={titleEn}
-                    onChange={(e) => setTitleEn(e.target.value)}
-                  />
-                </div>
+                <form onSubmit={handleSubmit} className="grievance-form">
+                  {/* STEP 1: CATEGORY & DETAILS */}
+                  {step === 1 && (
+                    <div className="wizard-step-content animate-fade-in">
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label>Category</label>
+                          <select value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
+                            <option value="pothole">Road & Pothole Damage</option>
+                            <option value="waste">Public Waste & Litter</option>
+                            <option value="streetlight">Broken Streetlights</option>
+                            <option value="waterlogging">Waterlogging & Drainage</option>
+                            <option value="property">Obstructions & Encroachment</option>
+                            <option value="other">Other Grievances</option>
+                          </select>
+                        </div>
 
-                <div className="form-group">
-                  <div className="label-with-action">
-                    <label>Complaint Title (Malayalam)</label>
-                    <button type="button" className="btn-action-sparkle" onClick={handleAutoTranslate}>
-                      <Sparkles size={12} />
-                      <span>{translateLoading ? "Translating..." : "Auto-Translate"}</span>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. റോഡിൽ വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു"
-                    value={titleMl}
-                    onChange={(e) => setTitleMl(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Detailed Description (English) *</label>
-                  <textarea
-                    required
-                    rows={3}
-                    placeholder="Provide depth, visual cues, and safety threats regarding the complaint..."
-                    value={descEn}
-                    onChange={(e) => setDescEn(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Detailed Description (Malayalam)</label>
-                  <textarea
-                    rows={2}
-                    placeholder="സംഭവം കൂടുതൽ വ്യക്തമാക്കുക..."
-                    value={descMl}
-                    onChange={(e) => setDescMl(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-row-2">
-                  <div className="form-group">
-                    <label>District *</label>
-                    <select value={district} onChange={(e) => setDistrict(e.target.value)}>
-                      {Object.entries(districtNames).map(([code, names]) => (
-                        <option key={code} value={code}>
-                          {names.nameEn} ({names.nameMl})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Specific Landmark / Address *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Near HDFC Bank, Kakkanad Round"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row-gps">
-                  <div className="form-group">
-                    <label>GPS Latitude *</label>
-                    <input type="text" placeholder="10.015900" required value={lat} readOnly />
-                  </div>
-                  <div className="form-group">
-                    <label>GPS Longitude *</label>
-                    <input type="text" placeholder="76.341900" required value={lng} readOnly />
-                  </div>
-                  <button type="button" className="btn-gps" onClick={handleFetchGPS} disabled={gpsLoading}>
-                    <MapPin size={16} />
-                    <span>{gpsLoading ? "Fetching..." : "Fetch GPS"}</span>
-                  </button>
-                </div>
-
-                {/* Grid of Unsplash category presets */}
-                <div className="form-group">
-                  <label>Choose Grievance Photo Attachment</label>
-                  <div className="preset-images-grid">
-                    {CATEGORY_PRESETS[category].map((preset, idx) => (
-                      <div
-                        key={idx}
-                        className={`preset-img-card ${imageUrl === preset.url ? "selected" : ""}`}
-                        onClick={() => setImageUrl(preset.url)}
-                      >
-                        <img src={preset.url} alt={preset.name} />
-                        <span className="preset-img-tag">{preset.name}</span>
+                        <div className="form-group">
+                          <label>Issue Seriousness</label>
+                          <select value={seriousness} onChange={(e) => setSeriousness(e.target.value)}>
+                            <option value="low">Low (Resolve within 15 Days)</option>
+                            <option value="medium">Medium (Resolve within 10 Days)</option>
+                            <option value="high">High (Resolve within 5 Days)</option>
+                            <option value="critical">Critical (Immediate - Resolve in 2 Days)</option>
+                          </select>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <button type="submit" className="btn-submit-grievance ripple-hover pulse-glow">
-                  <CheckCircle size={18} />
-                  <span>Submit grievance for verification</span>
-                </button>
-              </form>
+                      <div className="form-group">
+                        <label>Complaint Title (English) *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Large pothole near Kakkanad Civil Station"
+                          value={titleEn}
+                          onChange={(e) => setTitleEn(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <div className="label-with-action">
+                          <label>Complaint Title (Malayalam)</label>
+                          <button type="button" className="btn-action-sparkle" onClick={handleAutoTranslate}>
+                            <Sparkles size={12} />
+                            <span>{translateLoading ? "Translating..." : "Auto-Translate"}</span>
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="e.g. റോഡിൽ വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു"
+                          value={titleMl}
+                          onChange={(e) => setTitleMl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Detailed Description (English) *</label>
+                        <textarea
+                          required
+                          rows={3}
+                          placeholder="Provide depth, visual cues, and safety threats regarding the complaint..."
+                          value={descEn}
+                          onChange={(e) => setDescEn(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Detailed Description (Malayalam)</label>
+                        <textarea
+                          rows={2}
+                          placeholder="സംഭവം കൂടുതൽ വ്യക്തമാക്കുക..."
+                          value={descMl}
+                          onChange={(e) => setDescMl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-actions-row">
+                        <div />
+                        <button type="button" className="btn-wizard-next" onClick={handleNextStep1}>
+                          <span>Next: Specify Location</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2: LOCATION */}
+                  {step === 2 && (
+                    <div className="wizard-step-content animate-fade-in">
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label>District *</label>
+                          <select value={district} onChange={(e) => setDistrict(e.target.value)}>
+                            {Object.entries(districtNames).map(([code, names]) => (
+                              <option key={code} value={code}>
+                                {names.nameEn} ({names.nameMl})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Specific Landmark / Address *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Near HDFC Bank, Kakkanad Round"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row-gps">
+                        <div className="form-group">
+                          <label>GPS Latitude *</label>
+                          <input type="text" placeholder="10.015900" required value={lat} readOnly />
+                        </div>
+                        <div className="form-group">
+                          <label>GPS Longitude *</label>
+                          <input type="text" placeholder="76.341900" required value={lng} readOnly />
+                        </div>
+                        <button type="button" className="btn-gps" onClick={handleFetchGPS} disabled={gpsLoading}>
+                          <MapPin size={16} />
+                          <span>{gpsLoading ? "Fetching..." : "Fetch GPS"}</span>
+                        </button>
+                      </div>
+
+                      <div className="form-actions-row">
+                        <button type="button" className="btn-wizard-back" onClick={() => setStep(1)}>
+                          Back to Details
+                        </button>
+                        <button type="button" className="btn-wizard-next" onClick={handleNextStep2}>
+                          <span>Next: Attachment & Review</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: ATTACHMENT & REVIEW */}
+                  {step === 3 && (
+                    <div className="wizard-step-content animate-fade-in">
+                      {/* Photo Preset Attachment Selector */}
+                      <div className="form-group">
+                        <label>Choose Grievance Photo Attachment</label>
+                        <div className="preset-images-grid">
+                          {CATEGORY_PRESETS[category].map((preset, idx) => (
+                            <div
+                              key={idx}
+                              className={`preset-img-card ${imageUrl === preset.url ? "selected" : ""}`}
+                              onClick={() => setImageUrl(preset.url)}
+                            >
+                              <img src={preset.url} alt={preset.name} />
+                              <span className="preset-img-tag">{preset.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Summary Review Board */}
+                      <div className="review-panel">
+                        <h4 className="review-title">Review Grievance Summary</h4>
+                        <div className="review-grid">
+                          <span className="review-label">Category:</span>
+                          <span className="review-value">{category.toUpperCase()}</span>
+
+                          <span className="review-label">Priority:</span>
+                          <span className="review-value">{seriousness.toUpperCase()}</span>
+
+                          <span className="review-label">Title (En):</span>
+                          <span className="review-value">{titleEn}</span>
+
+                          {titleMl && (
+                            <>
+                              <span className="review-label">Title (Ml):</span>
+                              <span className="review-value">{titleMl}</span>
+                            </>
+                          )}
+
+                          <span className="review-label">Location:</span>
+                          <span className="review-value">
+                            {districtNames[district]?.nameEn || district}, {location} <br />
+                            <small className="text-muted">GPS Coords: {lat}, {lng}</small>
+                          </span>
+                        </div>
+
+                        <div className="review-thumbnail-container">
+                          <span className="review-label">Selected Photo:</span>
+                          <img src={imageUrl} alt="Attached Preview" className="review-thumbnail" />
+                        </div>
+                      </div>
+
+                      <div className="form-actions-row">
+                        <button type="button" className="btn-wizard-back" onClick={() => setStep(2)}>
+                          Back to Location
+                        </button>
+                        <button type="submit" className="btn-submit-grievance ripple-hover pulse-glow">
+                          <CheckCircle size={18} />
+                          <span>Submit Grievance</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </form>
+              </div>
             )}
           </div>
         )}
@@ -407,7 +512,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
         .report-modal {
           width: 100%;
           max-width: 680px;
-          max-height: 90vh;
+          max-height: 95vh;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -484,6 +589,88 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
           padding-right: 4px;
         }
 
+        /* Stepper progress indicator */
+        .stepper-container {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 24px;
+          background: rgba(0, 0, 0, 0.15);
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+          margin-bottom: 24px;
+        }
+
+        .step-indicator {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex: 1;
+          position: relative;
+        }
+
+        .step-indicator:last-child {
+          flex: none;
+        }
+
+        .step-circle {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--bg-secondary);
+          border: 2px solid var(--border-color);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-secondary);
+          transition: all var(--transition-fast);
+          z-index: 2;
+        }
+
+        .step-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          transition: all var(--transition-fast);
+        }
+
+        .step-line {
+          position: absolute;
+          left: 100px;
+          right: 20px;
+          height: 2px;
+          background: var(--border-color);
+          z-index: 1;
+          transition: all var(--transition-fast);
+        }
+
+        .step-indicator.active .step-circle {
+          border-color: var(--accent-color);
+          background: var(--accent-color);
+          color: white;
+          box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .step-indicator.active .step-label {
+          color: var(--text-primary);
+        }
+
+        .step-indicator.completed .step-circle {
+          border-color: var(--color-resolved);
+          background: var(--color-resolved);
+          color: white;
+        }
+
+        .step-indicator.completed .step-line {
+          background: var(--color-resolved);
+        }
+
+        .step-indicator.completed .step-label {
+          color: var(--color-resolved);
+        }
+
         .auth-alert-panel, .success-panel {
           display: flex;
           flex-direction: column;
@@ -555,6 +742,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
           font-size: 12px;
           font-weight: 600;
           color: var(--text-secondary);
+          text-align: left;
         }
 
         .label-with-action {
@@ -676,6 +864,100 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
           box-shadow: 0 0 10px var(--accent-glow);
         }
 
+        /* Wizard Form Elements */
+        .review-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 12px;
+          padding: 16px;
+          border: 1px solid var(--border-color);
+          text-align: left;
+        }
+
+        .review-title {
+          font-size: 14px;
+          font-weight: 700;
+          border-bottom: 1px solid var(--border-color);
+          padding-bottom: 6px;
+          color: var(--text-primary);
+        }
+
+        .review-grid {
+          display: grid;
+          grid-template-columns: 120px 1fr;
+          gap: 10px 16px;
+          font-size: 13px;
+        }
+
+        .review-label {
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        .review-value {
+          color: var(--text-primary);
+          line-height: 1.4;
+        }
+
+        .review-thumbnail-container {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          margin-top: 8px;
+        }
+
+        .review-thumbnail {
+          width: 80px;
+          height: 80px;
+          border-radius: 8px;
+          object-fit: cover;
+          border: 1px solid var(--border-color);
+        }
+
+        .form-actions-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 20px;
+        }
+
+        .btn-wizard-back {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .btn-wizard-back:hover {
+          background: var(--bg-input);
+          border-color: var(--text-muted);
+        }
+
+        .btn-wizard-next {
+          background: var(--accent-color);
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background var(--transition-fast);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-wizard-next:hover {
+          background: var(--accent-hover);
+        }
+
         .btn-submit-grievance {
           background: var(--accent-color);
           color: white;
@@ -688,12 +970,20 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
           justify-content: center;
           gap: 8px;
           cursor: pointer;
-          margin-top: 10px;
           transition: background var(--transition-fast);
         }
 
         .btn-submit-grievance:hover {
           background: var(--accent-hover);
+        }
+
+        @media (max-width: 576px) {
+          .step-line {
+            display: none;
+          }
+          .step-label {
+            font-size: 11px;
+          }
         }
 
         @media (max-width: 768px) {
