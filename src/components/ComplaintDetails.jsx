@@ -50,6 +50,22 @@ export default function ComplaintDetails({
 
   const isUpvotedByMe = currentUser && complaint.upvotedBy && complaint.upvotedBy.includes(currentUser.username);
 
+  const getDisplayCommenter = (userName) => {
+    if (!isUserAdmin(currentUser)) return userName;
+    if (!userName) return "[REDACTED FOR PRIVACY]";
+    const nameUpper = userName.toUpperCase();
+    const isAdmin = nameUpper.includes("ADMIN") || nameUpper.includes("SYSTEM") || nameUpper.includes("OFFICIAL") || nameUpper.includes("GOVERNMENT");
+    return isAdmin ? userName : "[REDACTED FOR PRIVACY]";
+  };
+
+  const getDisplayLogUser = (userName) => {
+    if (!isUserAdmin(currentUser)) return userName;
+    if (!userName) return "[REDACTED FOR PRIVACY]";
+    const nameUpper = userName.toUpperCase();
+    const isAdmin = nameUpper.includes("ADMIN") || nameUpper.includes("SYSTEM") || nameUpper.includes("OFFICIAL") || nameUpper.includes("GOVERNMENT") || nameUpper === "SYSTEM AUTOMATED ESCALATION ENGINE";
+    return isAdmin ? userName : "[REDACTED FOR PRIVACY]";
+  };
+
   // Suggested offsets based on Seriousness rules
   const getSchedulingOffset = (seriousness) => {
     switch (seriousness) {
@@ -310,7 +326,7 @@ export default function ComplaintDetails({
             )}
             <div className="citizen-stamp">
               <User size={12} />
-              <span>Filed by <strong>{complaint.citizen}</strong></span>
+              <span>Filed by <strong>{isUserAdmin(currentUser) ? "[REDACTED FOR PRIVACY]" : complaint.citizen}</strong></span>
               <span className="stamp-dot">•</span>
               <Clock size={12} />
               <span>{new Date(complaint.createdAt).toLocaleString()}</span>
@@ -374,7 +390,7 @@ export default function ComplaintDetails({
                     <div className="log-timeline-badge" />
                     <div className="log-timeline-content">
                       <div className="log-timeline-meta">
-                        <span className="log-user">👤 {log.byUser}</span>
+                        <span className="log-user">👤 {getDisplayLogUser(log.byUser)}</span>
                         <span className="log-time">🕒 {new Date(log.timestamp).toLocaleString()}</span>
                       </div>
                       <p className="log-text">{log.details}</p>
@@ -666,7 +682,7 @@ export default function ComplaintDetails({
                 complaint.comments.map((cm) => (
                   <div key={cm.id} className="comment-card-item">
                     <div className="comment-card-top">
-                      <span className="comment-user"><User size={10} /> {cm.user}</span>
+                      <span className="comment-user"><User size={10} /> {getDisplayCommenter(cm.user)}</span>
                       <span className="comment-time">{cm.time}</span>
                     </div>
                     <p className="comment-text-body">{cm.text}</p>

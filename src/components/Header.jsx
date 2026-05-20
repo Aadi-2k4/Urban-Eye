@@ -1,6 +1,7 @@
 // Header.jsx - Main top navigation bar with User authentication feedback, theme switches, and Time Machine fast forward controls
 import React from "react";
 import { Megaphone, Map, Trophy, BarChart3, Sun, Moon, Plus, LogIn, LogOut, ShieldAlert, FastForward, User } from "lucide-react";
+import { isUserAdmin } from "../utils/storage";
 
 export default function Header({
   activeTab,
@@ -101,10 +102,12 @@ export default function Header({
               </button>
 
               {/* Action Button - Disabled if not logged in */}
-              <button onClick={onOpenReport} className="btn-primary ripple-hover">
-                <Plus size={18} />
-                <span>Report Issue</span>
-              </button>
+              {!isUserAdmin(currentUser) && (
+                <button onClick={onOpenReport} className="btn-primary ripple-hover">
+                  <Plus size={18} />
+                  <span>Report Issue</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="auth-widget">
