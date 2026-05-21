@@ -8,7 +8,7 @@ import {
   Send, ShieldAlert, CheckCircle, Truck, Eye, PenTool, Sparkles, Map as MapIcon, Route
 } from "lucide-react";
 import { districtNames } from "../utils/seedData";
-import { getAdminInfoFromRole, isUserAdmin, canManageComplaint } from "../utils/storage";
+import { getAdminInfoFromRole, isUserAdmin, canManageComplaint, isLevelMatch } from "../utils/storage";
 
 // Fix Leaflet marker icon asset issue in React
 const customIcon = new L.Icon({
@@ -143,13 +143,17 @@ export default function ComplaintDetails({
     const timestamp = Date.now();
     const updater = currentUser ? currentUser.username : "Verified Admin";
 
+    // Detect level change
+    const levelChanged = hierarchyVal !== (complaint.hierarchyLevel || "panchayath");
+
     // Prepare updated complaint
     const updated = {
       ...complaint,
       status: statusVal,
       hierarchyLevel: hierarchyVal,
       originalHierarchyLevel: hierarchyVal,
-      category: departmentVal
+      category: departmentVal,
+      isManualLevel: levelChanged ? true : complaint.isManualLevel
     };
 
     // 1. Status change log
@@ -229,9 +233,19 @@ export default function ComplaintDetails({
 
     updates.push(updated);
 
+    const adminInfo = getAdminInfoFromRole(currentUser.role);
+    const willLoseAccess = adminInfo && !(
+      isLevelMatch(adminInfo.level, hierarchyVal) && 
+      departmentVal === adminInfo.department
+    );
+
     onUpdateComplaint(updates);
     setActiveAdminAction(true);
-    alert("Grievance action and updates applied successfully!");
+    if (willLoseAccess) {
+      alert(`Grievance updated successfully! Since it is now at the ${hierarchyVal.toUpperCase()} level under the ${departmentVal.toUpperCase()} department, it has been routed out of your administrative scope, and you will no longer have access.`);
+    } else {
+      alert("Grievance action and updates applied successfully!");
+    }
     setEscalationReason("");
     setTimeout(() => {
       setActiveAdminAction(false);
@@ -522,11 +536,11 @@ export default function ComplaintDetails({
 
                 {(hierarchyVal !== (complaint.hierarchyLevel || "panchayath") || departmentVal !== complaint.category) && (
                   <div className="form-group animate-fade-in">
-                    <label>Reason for Escalation / Re-routing *</label>
+                    <label>Reason for Level Change / Re-routing *</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Requires district machinery deployment / wrong department assigned"
+                      placeholder="e.g. Escalating for higher support / degrading to local panchayath / wrong department"
                       value={escalationReason}
                       onChange={(e) => setEscalationReason(e.target.value)}
                     />

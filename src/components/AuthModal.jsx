@@ -147,7 +147,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
           {tab === "admin" && (
             <p className="admin-notice">
-              ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
+              ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_water</code>, <code>district_water</code>, <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
             </p>
           )}
 

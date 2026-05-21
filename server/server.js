@@ -83,7 +83,8 @@ const ComplaintSchema = new mongoose.Schema({
   resolutionImage: String,
   assignedTeam: String,
   technicianName: String,
-  technicianPhone: String
+  technicianPhone: String,
+  isManualLevel: Boolean
 });
 
 const Complaint = mongoose.model("Complaint", ComplaintSchema);
@@ -91,11 +92,14 @@ const Complaint = mongoose.model("Complaint", ComplaintSchema);
 // Auto-seeding logic
 const seedDatabase = async () => {
   try {
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      await User.insertMany(defaultUsers);
-      console.log("Database initialized: Default users seeded.");
+    for (const u of defaultUsers) {
+      await User.findOneAndUpdate(
+        { username: u.username },
+        u,
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
+    console.log("Database initialized: Default users synchronized.");
 
     const complaintCount = await Complaint.countDocuments();
     if (complaintCount === 0) {

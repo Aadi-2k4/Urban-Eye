@@ -37,7 +37,8 @@ import {
   getAdminInfoFromRole,
   getGroupedComplaints,
   sanitizeComplaint,
-  isUserAdmin
+  isUserAdmin,
+  isLevelMatch
 } from "./utils/storage";
 
 import {
@@ -297,7 +298,7 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
 
                   {tab === "admin" && (
                     <p className="admin-notice">
-                      ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
+                      ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_water</code>, <code>district_water</code>, <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
                     </p>
                   )}
 
@@ -763,7 +764,7 @@ export default function App() {
     const adminInfo = getAdminInfoFromRole(currentUser.role);
     if (adminInfo) {
       return complaints.filter(
-        (c) => c.hierarchyLevel === adminInfo.level && c.assignedDepartment === adminInfo.department
+        (c) => isLevelMatch(adminInfo.level, c.hierarchyLevel) && c.assignedDepartment === adminInfo.department
       );
     }
     
@@ -846,23 +847,25 @@ export default function App() {
       );
 
       // Automated Governance Escalation Gates
-      if (ageDays > 10) {
-        if (newLevel !== "state") {
-          logs.push({
-            timestamp: Date.now(),
-            byUser: "System Automated Escalation Engine",
-            details: `Automated escalation to STATE level due to unresolved ticket age (> 10 days).`
-          });
-          newLevel = "state";
-        }
-      } else if (ageDays > 5) {
-        if (newLevel === "panchayath") {
-          logs.push({
-            timestamp: Date.now(),
-            byUser: "System Automated Escalation Engine",
-            details: `Automated escalation from PANCHAYATH to DISTRICT level due to unresolved ticket age (> 5 days).`
-          });
-          newLevel = "district";
+      if (!c.isManualLevel) {
+        if (ageDays > 10) {
+          if (newLevel !== "state") {
+            logs.push({
+              timestamp: Date.now(),
+              byUser: "System Automated Escalation Engine",
+              details: `Automated escalation to STATE level due to unresolved ticket age (> 10 days).`
+            });
+            newLevel = "state";
+          }
+        } else if (ageDays > 5) {
+          if (newLevel === "panchayath") {
+            logs.push({
+              timestamp: Date.now(),
+              byUser: "System Automated Escalation Engine",
+              details: `Automated escalation from PANCHAYATH to DISTRICT level due to unresolved ticket age (> 5 days).`
+            });
+            newLevel = "district";
+          }
         }
       }
 
@@ -987,6 +990,7 @@ export default function App() {
             status: u.status,
             assignedDepartment: u.assignedDepartment,
             hierarchyLevel: u.hierarchyLevel,
+            isManualLevel: u.isManualLevel,
             seriousness: u.seriousness,
             originalSeriousness: u.originalSeriousness,
             comments: u.comments,
@@ -1032,7 +1036,7 @@ export default function App() {
           : aged.filter(c => {
               const adminInfo = getAdminInfoFromRole(currentUser.role);
               if (adminInfo) {
-                return c.hierarchyLevel === adminInfo.level && c.assignedDepartment === adminInfo.department;
+                return isLevelMatch(adminInfo.level, c.hierarchyLevel) && c.assignedDepartment === adminInfo.department;
               }
               return true;
             });
@@ -1045,7 +1049,17 @@ export default function App() {
         }
       } else {
         const activeObj = aged.find(c => c.id === selectedComplaint.id);
-        if (activeObj) setSelectedComplaint(activeObj);
+        const hasAccess = !activeObj || (currentUser.role === "admin" || currentUser.role === "ADMIN") || (() => {
+          const adminInfo = getAdminInfoFromRole(currentUser.role);
+          if (!adminInfo) return true; // Citizen/guest
+          return isLevelMatch(adminInfo.level, activeObj.hierarchyLevel) && activeObj.assignedDepartment === adminInfo.department;
+        })();
+
+        if (activeObj && hasAccess) {
+          setSelectedComplaint(activeObj);
+        } else {
+          setSelectedComplaint(null);
+        }
       }
     }
   };

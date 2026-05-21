@@ -73,6 +73,24 @@ export const isUserAdmin = (user) => {
   return !!adminInfo;
 };
 
+// Check if an admin's level matches or subsumes a complaint's hierarchy level
+export const isLevelMatch = (adminLevel, complaintLevel) => {
+  if (!adminLevel || !complaintLevel) return false;
+  const aLevel = adminLevel.toLowerCase();
+  const cLevel = complaintLevel.toLowerCase();
+
+  if (aLevel === HIERARCHY_LEVELS.PANCHAYATH) {
+    return cLevel === HIERARCHY_LEVELS.PANCHAYATH;
+  }
+  if (aLevel === HIERARCHY_LEVELS.DISTRICT) {
+    return cLevel === HIERARCHY_LEVELS.DISTRICT || cLevel === HIERARCHY_LEVELS.PANCHAYATH;
+  }
+  if (aLevel === HIERARCHY_LEVELS.STATE) {
+    return true; // State sees everything (state, district, panchayath)
+  }
+  return false;
+};
+
 // Checks if the admin user is authorized to manage/view the specific complaint
 export const canManageComplaint = (user, complaint) => {
   if (!user) return false;
@@ -81,9 +99,9 @@ export const canManageComplaint = (user, complaint) => {
   const adminInfo = getAdminInfoFromRole(user.role);
   if (!adminInfo) return false; // Citizen cannot do admin tasks
   
-  // Must match both level and department
+  // Must match both level (hierarchical match) and department
   return (
-    complaint.hierarchyLevel === adminInfo.level &&
+    isLevelMatch(adminInfo.level, complaint.hierarchyLevel) &&
     complaint.assignedDepartment === adminInfo.department
   );
 };
@@ -174,7 +192,8 @@ export const sanitizeComplaint = (c) => {
     assignedDepartment: department,
     escalationStatus: c.escalationStatus || "none",
     escalationLog: c.escalationLog || [],
-    agingResetLog: c.agingResetLog || []
+    agingResetLog: c.agingResetLog || [],
+    isManualLevel: !!c.isManualLevel
   };
 };
 
@@ -250,12 +269,36 @@ export const saveSimulatedAgedDays = (days) => {
 const defaultUsers = [
   { name: "Ragesh K.", username: "citizen", password: "123", role: "citizen" },
   { name: "Devika S.", username: "devika", password: "123", role: "citizen" },
+  
+  // ROAD
   { name: "Panchayath Road Admin", username: "panchayath_road", password: "123", role: "PANCHAYATH_ROAD_ADMIN" },
-  { name: "Panchayath Health Admin", username: "panchayath_health", password: "123", role: "PANCHAYATH_HEALTH_ADMIN" },
   { name: "District Road Admin", username: "district_road", password: "123", role: "DISTRICT_ROAD_ADMIN" },
-  { name: "District Health Admin", username: "district_health", password: "123", role: "DISTRICT_HEALTH_ADMIN" },
+  { name: "State Road Admin", username: "state_road", password: "123", role: "STATE_ROAD_ADMIN" },
+
+  // WATER
+  { name: "Panchayath Water Admin", username: "panchayath_water", password: "123", role: "PANCHAYATH_WATER_ADMIN" },
+  { name: "District Water Admin", username: "district_water", password: "123", role: "DISTRICT_WATER_ADMIN" },
   { name: "State Water Admin", username: "state_water", password: "123", role: "STATE_WATER_ADMIN" },
-  { name: "State Road Admin", username: "state_road", password: "123", role: "STATE_ROAD_ADMIN" }
+
+  // HEALTH
+  { name: "Panchayath Health Admin", username: "panchayath_health", password: "123", role: "PANCHAYATH_HEALTH_ADMIN" },
+  { name: "District Health Admin", username: "district_health", password: "123", role: "DISTRICT_HEALTH_ADMIN" },
+  { name: "State Health Admin", username: "state_health", password: "123", role: "STATE_HEALTH_ADMIN" },
+
+  // WASTE MANAGEMENT
+  { name: "Panchayath Waste Admin", username: "panchayath_waste", password: "123", role: "PANCHAYATH_WASTE_ADMIN" },
+  { name: "District Waste Admin", username: "district_waste", password: "123", role: "DISTRICT_WASTE_ADMIN" },
+  { name: "State Waste Admin", username: "state_waste", password: "123", role: "STATE_WASTE_ADMIN" },
+
+  // ELECTRICITY
+  { name: "Panchayath Electricity Admin", username: "panchayath_electricity", password: "123", role: "PANCHAYATH_ELECTRICITY_ADMIN" },
+  { name: "District Electricity Admin", username: "district_electricity", password: "123", role: "DISTRICT_ELECTRICITY_ADMIN" },
+  { name: "State Electricity Admin", username: "state_electricity", password: "123", role: "STATE_ELECTRICITY_ADMIN" },
+
+  // OTHER
+  { name: "Panchayath Other Admin", username: "panchayath_other", password: "123", role: "PANCHAYATH_OTHER_ADMIN" },
+  { name: "District Other Admin", username: "district_other", password: "123", role: "DISTRICT_OTHER_ADMIN" },
+  { name: "State Other Admin", username: "state_other", password: "123", role: "STATE_OTHER_ADMIN" }
 ];
 
 export const getStoredUsers = () => {

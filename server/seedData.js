@@ -2,12 +2,36 @@
 export const defaultUsers = [
   { name: "Ragesh K.", username: "citizen", password: "123", role: "citizen" },
   { name: "Devika S.", username: "devika", password: "123", role: "citizen" },
+  
+  // ROAD
   { name: "Panchayath Road Admin", username: "panchayath_road", password: "123", role: "PANCHAYATH_ROAD_ADMIN" },
-  { name: "Panchayath Health Admin", username: "panchayath_health", password: "123", role: "PANCHAYATH_HEALTH_ADMIN" },
   { name: "District Road Admin", username: "district_road", password: "123", role: "DISTRICT_ROAD_ADMIN" },
-  { name: "District Health Admin", username: "district_health", password: "123", role: "DISTRICT_HEALTH_ADMIN" },
+  { name: "State Road Admin", username: "state_road", password: "123", role: "STATE_ROAD_ADMIN" },
+
+  // WATER
+  { name: "Panchayath Water Admin", username: "panchayath_water", password: "123", role: "PANCHAYATH_WATER_ADMIN" },
+  { name: "District Water Admin", username: "district_water", password: "123", role: "DISTRICT_WATER_ADMIN" },
   { name: "State Water Admin", username: "state_water", password: "123", role: "STATE_WATER_ADMIN" },
-  { name: "State Road Admin", username: "state_road", password: "123", role: "STATE_ROAD_ADMIN" }
+
+  // HEALTH
+  { name: "Panchayath Health Admin", username: "panchayath_health", password: "123", role: "PANCHAYATH_HEALTH_ADMIN" },
+  { name: "District Health Admin", username: "district_health", password: "123", role: "DISTRICT_HEALTH_ADMIN" },
+  { name: "State Health Admin", username: "state_health", password: "123", role: "STATE_HEALTH_ADMIN" },
+
+  // WASTE MANAGEMENT
+  { name: "Panchayath Waste Admin", username: "panchayath_waste", password: "123", role: "PANCHAYATH_WASTE_ADMIN" },
+  { name: "District Waste Admin", username: "district_waste", password: "123", role: "DISTRICT_WASTE_ADMIN" },
+  { name: "State Waste Admin", username: "state_waste", password: "123", role: "STATE_WASTE_ADMIN" },
+
+  // ELECTRICITY
+  { name: "Panchayath Electricity Admin", username: "panchayath_electricity", password: "123", role: "PANCHAYATH_ELECTRICITY_ADMIN" },
+  { name: "District Electricity Admin", username: "district_electricity", password: "123", role: "DISTRICT_ELECTRICITY_ADMIN" },
+  { name: "State Electricity Admin", username: "state_electricity", password: "123", role: "STATE_ELECTRICITY_ADMIN" },
+
+  // OTHER
+  { name: "Panchayath Other Admin", username: "panchayath_other", password: "123", role: "PANCHAYATH_OTHER_ADMIN" },
+  { name: "District Other Admin", username: "district_other", password: "123", role: "DISTRICT_OTHER_ADMIN" },
+  { name: "State Other Admin", username: "state_other", password: "123", role: "STATE_OTHER_ADMIN" }
 ];
 
 export const initialComplaints = [
