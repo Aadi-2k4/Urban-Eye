@@ -16,6 +16,8 @@ UrbanEye is a next-generation smart complaint management system designed for mun
 * **WhatsApp Sim Integration:** Citizens verify identity via a simulated WhatsApp chat bot with real-time **4-digit SMS OTP verification**.
 * **Personalized Dashboard Split:** Citizens view their submissions under a dedicated **"My Complaints"** tab, separate from the public **"Community Issues"** feed.
 * **Anti-Spam Upvote Protection:** Citizens are limited to **exactly one upvote per ticket** to prevent duplicate concern spikes. Upvoted cards and detailed views highlight with an amber-gold glow (`#f59e0b`).
+* **Interactive Location Picker Map:** In Step 2 of report registration, citizens can pick and fine-tune their location by clicking directly on an embedded Leaflet map which automatically centers on their selected district.
+* **Custom Image Upload:** In Step 3, citizens can drag-and-drop or browse to upload custom grievance photos. These are converted to base64 strings and stored locally to preserve privacy and function without server dependency.
 
 ### 3. 🛡️ Multi-Level Departmental Admins & Scoped Views
 * **Jurisdictional Scopes:** Supports hierarchical administrative accounts (Panchayath, District, State) for municipal sectors (Road, Water, Health, Waste Management, Electricity, Other).

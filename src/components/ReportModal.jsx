@@ -1,8 +1,62 @@
 // ReportModal.jsx - Citizen Reporting Form & WhatsApp Simulator Integration
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Megaphone, Smartphone, MapPin, Sparkles, Image as ImageIcon, CheckCircle, ShieldAlert } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import WhatsAppChatSim from "./WhatsAppChatSim";
 import { districtNames } from "../utils/seedData";
+
+// Fix Leaflet marker icon asset issue in React
+const customIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34]
+});
+
+// Map View Panning Helper Component
+function ChangeMapView({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView(center, 12);
+    }
+  }, [center, map]);
+  return null;
+}
+
+// Marker component that listens to clicks on the map to set location coordinates
+function LocationPickerMarker({ lat, lng, setLat, setLng }) {
+  useMapEvents({
+    click(e) {
+      setLat(e.latlng.lat.toFixed(6));
+      setLng(e.latlng.lng.toFixed(6));
+    },
+  });
+
+  return lat && lng ? (
+    <Marker position={[parseFloat(lat), parseFloat(lng)]} icon={customIcon} />
+  ) : null;
+}
+
+const DISTRICT_CENTERS = {
+  EKM: [9.9816, 76.2999],
+  MPM: [11.0735, 76.0740],
+  TVM: [8.5241, 76.9366],
+  TSR: [10.5276, 76.2144],
+  KKD: [11.2588, 75.7804],
+  PKD: [10.7867, 76.6547],
+  KLM: [8.8932, 76.6141],
+  ALP: [9.4981, 76.3388],
+  KTM: [9.5916, 76.5222],
+  KSD: [12.5103, 74.9852],
+  KNR: [11.8745, 75.3704],
+  WYD: [11.6854, 76.1320],
+  IDK: [9.9189, 77.1025],
+  PTA: [9.2648, 76.7870]
+};
 
 // Unsplash presets for categories
 const CATEGORY_PRESETS = {
@@ -77,12 +131,27 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
   const [gpsLoading, setGpsLoading] = useState(false);
   const [translateLoading, setTranslateLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [mapCenter, setMapCenter] = useState(DISTRICT_CENTERS.EKM);
+  const [customImage, setCustomImage] = useState(null);
 
   if (!isOpen) return null;
 
   const handleCategoryChange = (cat) => {
     setCategory(cat);
-    setImageUrl(CATEGORY_PRESETS[cat][0].url);
+    // If they have a custom image uploaded, prioritize it, otherwise set first preset
+    if (customImage) {
+      setImageUrl(customImage);
+    } else {
+      setImageUrl(CATEGORY_PRESETS[cat][0].url);
+    }
+  };
+
+  const handleDistrictChange = (code) => {
+    setDistrict(code);
+    const center = DISTRICT_CENTERS[code] || DISTRICT_CENTERS.EKM;
+    setMapCenter(center);
+    setLat(center[0].toFixed(6));
+    setLng(center[1].toFixed(6));
   };
 
   const handleFetchGPS = () => {
@@ -90,31 +159,50 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLat(position.coords.latitude.toFixed(6));
-          setLng(position.coords.longitude.toFixed(6));
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          setLat(latitude.toFixed(6));
+          setLng(longitude.toFixed(6));
+          setMapCenter([latitude, longitude]);
           setGpsLoading(false);
         },
         (error) => {
           // Standard mock fallback inside Kerala
-          const randomOffsets = {
-            EKM: { lat: 9.9074 + (Math.random() - 0.5) * 0.05, lng: 76.3059 + (Math.random() - 0.5) * 0.05 },
-            MPM: { lat: 11.1495 + (Math.random() - 0.5) * 0.05, lng: 75.9620 + (Math.random() - 0.5) * 0.05 },
-            TVM: { lat: 8.5367 + (Math.random() - 0.5) * 0.05, lng: 76.9427 + (Math.random() - 0.5) * 0.05 },
-            TSR: { lat: 10.5244 + (Math.random() - 0.5) * 0.05, lng: 76.2140 + (Math.random() - 0.5) * 0.05 },
-            KKD: { lat: 11.2588 + (Math.random() - 0.5) * 0.05, lng: 75.7690 + (Math.random() - 0.5) * 0.05 }
-          };
-          const coords = randomOffsets[district] || randomOffsets.EKM;
-          setLat(coords.lat.toFixed(6));
-          setLng(coords.lng.toFixed(6));
+          const coords = DISTRICT_CENTERS[district] || DISTRICT_CENTERS.EKM;
+          const offsetLat = coords[0] + (Math.random() - 0.5) * 0.02;
+          const offsetLng = coords[1] + (Math.random() - 0.5) * 0.02;
+          setLat(offsetLat.toFixed(6));
+          setLng(offsetLng.toFixed(6));
+          setMapCenter([offsetLat, offsetLng]);
           setGpsLoading(false);
         },
         { timeout: 5000 }
       );
     } else {
-      setLat("10.015900");
-      setLng("76.341900");
+      const coords = DISTRICT_CENTERS[district] || DISTRICT_CENTERS.EKM;
+      setLat(coords[0].toFixed(6));
+      setLng(coords[1].toFixed(6));
+      setMapCenter(coords);
       setGpsLoading(false);
     }
+  };
+
+  const handleCustomImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds 5MB limit. Please upload a smaller image.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const base64Url = uploadEvent.target.result;
+      setCustomImage(base64Url);
+      setImageUrl(base64Url); // Automatically select the uploaded image!
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAutoTranslate = () => {
@@ -192,6 +280,8 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
     setLng("");
     setCategory("pothole");
     setImageUrl(CATEGORY_PRESETS.pothole[0].url);
+    setCustomImage(null);
+    setMapCenter(DISTRICT_CENTERS.EKM);
     setSeriousness("medium");
     setStep(1);
   };
@@ -374,7 +464,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
                       <div className="form-row-2">
                         <div className="form-group">
                           <label>District *</label>
-                          <select value={district} onChange={(e) => setDistrict(e.target.value)}>
+                          <select value={district} onChange={(e) => handleDistrictChange(e.target.value)}>
                             {Object.entries(districtNames).map(([code, names]) => (
                               <option key={code} value={code}>
                                 {names.nameEn} ({names.nameMl})
@@ -410,6 +500,25 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
                         </button>
                       </div>
 
+                      <div className="form-group" style={{ margin: "16px 0" }}>
+                        <label style={{ marginBottom: "6px", display: "block" }}>Click on the map to pick/fine-tune location *</label>
+                        <div style={{ height: "240px", borderRadius: "8px", overflow: "hidden", border: "1px solid var(--border-color)", position: "relative", zIndex: 10 }}>
+                          <MapContainer
+                            center={mapCenter}
+                            zoom={12}
+                            style={{ height: "100%", width: "100%" }}
+                            scrollWheelZoom={true}
+                          >
+                            <TileLayer
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            <ChangeMapView center={mapCenter} />
+                            <LocationPickerMarker lat={lat} lng={lng} setLat={setLat} setLng={setLng} />
+                          </MapContainer>
+                        </div>
+                      </div>
+
                       <div className="form-actions-row">
                         <button type="button" className="btn-wizard-back" onClick={() => setStep(1)}>
                           Back to Details
@@ -438,6 +547,30 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
                               <span className="preset-img-tag">{preset.name}</span>
                             </div>
                           ))}
+                          {customImage && (
+                            <div
+                              className={`preset-img-card ${imageUrl === customImage ? "selected" : ""}`}
+                              onClick={() => setImageUrl(customImage)}
+                            >
+                              <img src={customImage} alt="Uploaded Media" />
+                              <span className="preset-img-tag">Uploaded Media</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* File Upload Selector Dropzone */}
+                        <div className="custom-upload-zone glass">
+                          <ImageIcon size={24} className="upload-icon" />
+                          <div className="upload-text-box">
+                            <span className="upload-title">Or Upload Your Own Photo</span>
+                            <span className="upload-subtitle">Drag & drop or click to browse (Max 5MB)</span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleCustomImageUpload} 
+                            className="hidden-file-input" 
+                          />
                         </div>
                       </div>
 
@@ -862,6 +995,59 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
         .preset-img-card.selected {
           border-color: var(--accent-color);
           box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .custom-upload-zone {
+          position: relative;
+          margin-top: 12px;
+          border: 2px dashed var(--border-color);
+          border-radius: 8px;
+          padding: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .custom-upload-zone:hover {
+          border-color: var(--accent-color);
+          background: rgba(255, 255, 255, 0.06);
+        }
+
+        .hidden-file-input {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          cursor: pointer;
+        }
+
+        .upload-icon {
+          color: var(--accent-color);
+          opacity: 0.8;
+        }
+
+        .upload-text-box {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .upload-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-color);
+        }
+
+        .upload-subtitle {
+          font-size: 11px;
+          color: var(--text-color);
+          opacity: 0.6;
         }
 
         /* Wizard Form Elements */
