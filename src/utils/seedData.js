@@ -227,6 +227,48 @@ export const initialComplaints = [
     upvotes: 19,
     upvotedBy: ["devika"],
     comments: []
+  },
+  {
+    id: "c11",
+    category: "pothole",
+    titleEn: "Severe pothole in Kondotty central street",
+    titleMl: "കൊണ്ടോട്ടി സെന്ററിൽ വലിയ റോഡ് തകരാർ",
+    descEn: "Potholes on the paved road at Kondotty center with loose gravel, obstructing regular traffic and vehicle movement.",
+    descMl: "കൊണ്ടോട്ടി സെന്റർ റോഡിൽ വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു. വലിയ വാഹനാപകടങ്ങൾക്ക് സാധ്യതയുള്ളതിനാൽ ഇത് പരിഹരിക്കണം.",
+    location: "Kondotty, Malappuram",
+    district: "MPM",
+    lat: 11.1499,
+    lng: 75.9625,
+    image: "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=800&auto=format&fit=crop&q=80",
+    createdAt: Date.now() - 1 * 3600 * 1000,
+    status: "submitted",
+    seriousness: "medium",
+    originalSeriousness: "medium",
+    citizen: "Amal Jin",
+    upvotes: 8,
+    upvotedBy: [],
+    comments: []
+  },
+  {
+    id: "c12",
+    category: "pothole",
+    titleEn: "Crater formed near Kozhikode Beach walkway",
+    titleMl: "കോഴിക്കോട് ബീച്ച് വാക്ക് വേയ്ക്ക് സമീപം കുഴി",
+    descEn: "A deep pothole has opened near the Kozhikode beach walkway, posing serious risks to vehicles and pedestrians.",
+    descMl: "കോഴിക്കോട് ബീച്ച് വാക്ക് വേയ്ക്ക് സമീപം വലിയ കുഴി രൂപപ്പെട്ടിരിക്കുന്നു. കാൽനടക്കാർക്കും രാത്രി യാത്രക്കാർക്കും ഭീഷണിയാണ്.",
+    location: "Beach Road, Kozhikode",
+    district: "KKD",
+    lat: 11.2591,
+    lng: 75.7693,
+    image: "https://images.unsplash.com/photo-1621293954908-907141467fc7?w=800&auto=format&fit=crop&q=80",
+    createdAt: Date.now() - 6 * 3600 * 1000,
+    status: "submitted",
+    seriousness: "medium",
+    originalSeriousness: "medium",
+    citizen: "Deepak Parol",
+    upvotes: 12,
+    upvotedBy: [],
+    comments: []
   }
 ];
 

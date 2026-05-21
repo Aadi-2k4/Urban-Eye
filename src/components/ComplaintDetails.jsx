@@ -231,6 +231,7 @@ export default function ComplaintDetails({
 
     onUpdateComplaint(updates);
     setActiveAdminAction(true);
+    alert("Grievance action and updates applied successfully!");
     setEscalationReason("");
     setTimeout(() => {
       setActiveAdminAction(false);

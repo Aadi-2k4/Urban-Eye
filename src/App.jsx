@@ -952,34 +952,38 @@ export default function App() {
     setComplaints(aged);
     saveComplaints(aged);
   };
-
   const handleUpdateComplaint = (updates) => {
     let updateList = [];
-    if (updates && !Array.isArray(updates) && updates.isGroup) {
-      const childIds = new Set(updates.childComplaints.map(ch => ch.id));
-      updateList = updates.childComplaints.map(ch => {
-        return {
-          ...ch,
-          status: updates.status,
-          assignedDepartment: updates.assignedDepartment,
-          hierarchyLevel: updates.hierarchyLevel,
-          seriousness: updates.seriousness,
-          originalSeriousness: updates.originalSeriousness,
-          comments: updates.comments,
-          resolutionNotes: updates.resolutionNotes,
-          resolutionImage: updates.resolutionImage,
-          resolvedDate: updates.resolvedDate,
-          scheduledDate: updates.scheduledDate,
-          assignedTeam: updates.assignedTeam,
-          technicianName: updates.technicianName,
-          technicianPhone: updates.technicianPhone,
-          escalationStatus: updates.escalationStatus,
-          escalationLogs: updates.escalationLogs
-        };
-      });
-    } else {
-      updateList = Array.isArray(updates) ? updates : [updates];
-    }
+    const rawUpdates = Array.isArray(updates) ? updates : [updates];
+    
+    rawUpdates.forEach(u => {
+      if (u && u.isGroup && u.childComplaints) {
+        // Flatten the group by applying updates to all its children
+        u.childComplaints.forEach(ch => {
+          updateList.push({
+            ...ch,
+            status: u.status,
+            assignedDepartment: u.assignedDepartment,
+            hierarchyLevel: u.hierarchyLevel,
+            seriousness: u.seriousness,
+            originalSeriousness: u.originalSeriousness,
+            comments: u.comments,
+            resolutionNotes: u.resolutionNotes,
+            resolutionImage: u.resolutionImage,
+            resolvedDate: u.resolvedDate,
+            scheduledDate: u.scheduledDate,
+            assignedTeam: u.assignedTeam,
+            technicianName: u.technicianName,
+            technicianPhone: u.technicianPhone,
+            escalationStatus: u.escalationStatus,
+            escalationLogs: u.escalationLogs
+          });
+        });
+      } else {
+        updateList.push(u);
+      }
+    });
+
     const updateMap = new Map(updateList.map(u => [u.id, u]));
 
     const updatedList = complaints.map(c => {

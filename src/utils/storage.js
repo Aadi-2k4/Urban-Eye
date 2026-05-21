@@ -326,16 +326,17 @@ export function calculateDistanceMeters(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
-// Token-based Jaccard similarity and overlap coefficient for description similarity
-export function areDescriptionsSimilar(d1, d2) {
-  if (!d1 || !d2) return false;
-  const clean1 = d1.toLowerCase().trim();
-  const clean2 = d2.toLowerCase().trim();
+// Token-based Jaccard similarity and overlap coefficient for text similarity (supports English and Malayalam)
+export function areTextsSimilar(str1, str2) {
+  if (!str1 || !str2) return false;
+  const clean1 = str1.toLowerCase().trim();
+  const clean2 = str2.toLowerCase().trim();
   if (clean1 === clean2) return true;
-  if (clean1.includes(clean2) && clean2.length > 10) return true;
-  if (clean2.includes(clean1) && clean1.length > 10) return true;
+  if (clean1.includes(clean2) && clean2.length > 8) return true;
+  if (clean2.includes(clean1) && clean1.length > 8) return true;
 
-  const getTokens = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+  // Preserve standard letters, digits, whitespace, and Malayalam characters (\u0D00-\u0D7F)
+  const getTokens = (str) => str.toLowerCase().replace(/[^\w\s\u0D00-\u0D7F]/g, "").split(/\s+/).filter(w => w.length > 1);
   const t1 = getTokens(clean1);
   const t2 = getTokens(clean2);
   if (t1.length === 0 || t2.length === 0) return false;
@@ -349,10 +350,14 @@ export function areDescriptionsSimilar(d1, d2) {
   const jaccard = intersection / new Set([...t1, ...t2]).size;
   const overlap = intersection / Math.min(s1.size, s2.size);
 
-  return jaccard > 0.15 || overlap > 0.35;
+  return jaccard > 0.12 || overlap > 0.30;
 }
 
-// Group complaints of same category, similar description, and within 300 meters
+export function areDescriptionsSimilar(d1, d2) {
+  return areTextsSimilar(d1, d2);
+}
+
+// Group complaints of same category, similar description/title, and within 300 meters
 export function getGroupedComplaints(list) {
   const groups = [];
   const visited = new Set();
@@ -391,8 +396,11 @@ export function getGroupedComplaints(list) {
       const withinDistance = distance <= 300;
       if (!withinDistance) continue;
 
-      // 3. Similar description
-      const similarDesc = areDescriptionsSimilar(c1.descEn, c2.descEn);
+      // 3. Similar description (En/Ml) or title (En/Ml)
+      const similarDesc = areDescriptionsSimilar(c1.descEn, c2.descEn) || 
+                          areDescriptionsSimilar(c1.descMl, c2.descMl) ||
+                          areTextsSimilar(c1.titleEn, c2.titleEn) ||
+                          areTextsSimilar(c1.titleMl, c2.titleMl);
       if (!similarDesc) continue;
 
       groupMembers.push(c2);

@@ -263,6 +263,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
 
     onNewComplaint(newComplaint);
     setSuccess(true);
+    alert("Grievance registered successfully!");
     setTimeout(() => {
       setSuccess(false);
       onClose();
