@@ -16,24 +16,26 @@ const statusColors = {
 };
 
 // Create custom status-colored SVG markers
-const createCustomPin = (status, seriousness) => {
+const createCustomPin = (status, seriousness, isGroup) => {
   const color = statusColors[status] || "#3b82f6";
   const isCritical = seriousness === "critical";
   const glowClass = isCritical ? "pulse-critical-marker" : "pulse-normal-marker";
   
+  const groupClass = isGroup ? "group-double-ring" : "";
   const html = `
-    <div class="custom-leaflet-marker">
+    <div class="custom-leaflet-marker ${groupClass}">
       <div class="marker-glowing-ring ${glowClass}" style="background-color: ${color}"></div>
       <div class="marker-core-dot" style="background-color: ${color}; border-color: white;"></div>
+      ${isGroup ? `<div class="marker-group-badge" style="background-color: var(--accent-color); border: 1px solid white;">👥</div>` : ""}
     </div>
   `;
 
   return L.divIcon({
     html,
     className: "leaflet-custom-divicon",
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14]
   });
 };
 
@@ -82,7 +84,7 @@ export default function InteractiveMap({ complaints, onComplaintClick, theme }) 
               <Marker
                 key={c.id}
                 position={[c.lat, c.lng]}
-                icon={createCustomPin(c.status, c.seriousness)}
+                icon={createCustomPin(c.status, c.seriousness, c.isGroup)}
               >
                 <Popup className="premium-map-popup">
                   <div className="map-popup-card">
@@ -98,6 +100,19 @@ export default function InteractiveMap({ complaints, onComplaintClick, theme }) 
                         <span className="popup-category-label">
                           {c.category.toUpperCase()}
                         </span>
+                        {c.isGroup && (
+                          <span style={{
+                            background: "var(--accent-color)",
+                            color: "white",
+                            fontSize: "9px",
+                            fontWeight: "700",
+                            padding: "2px 6px",
+                            borderRadius: "10px",
+                            marginLeft: "auto"
+                          }}>
+                            👥 Group ({c.childComplaints.length})
+                          </span>
+                        )}
                       </div>
                       
                       <h4 className="map-popup-title">{c.titleEn}</h4>
@@ -204,6 +219,22 @@ export default function InteractiveMap({ complaints, onComplaintClick, theme }) 
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+
+        .marker-group-badge {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          font-size: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          z-index: 3;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
 
         .marker-glowing-ring {

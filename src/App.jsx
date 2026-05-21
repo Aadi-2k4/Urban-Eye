@@ -1,5 +1,5 @@
 // App.jsx - Main Application Controller, Session Manager & Dynamic Grievance Aging Engine
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Header from "./components/Header";
 import ComplaintFeed from "./components/ComplaintFeed";
 import InteractiveMap from "./components/InteractiveMap";
@@ -37,7 +37,8 @@ import {
   saveSimulatedAgedDays,
   getStoredUsers,
   saveUsers,
-  getAdminInfoFromRole
+  getAdminInfoFromRole,
+  getGroupedComplaints
 } from "./utils/storage";
 
 export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
@@ -770,6 +771,14 @@ export default function App() {
   
   const visibleComplaints = getVisibleComplaints();
 
+  const processedComplaints = useMemo(() => {
+    const isAdmin = currentUser && currentUser.role !== "citizen";
+    if (isAdmin) {
+      return getGroupedComplaints(visibleComplaints);
+    }
+    return visibleComplaints;
+  }, [visibleComplaints, currentUser]);
+
   // 1. Initial Mount: Load Theme, Session, and run Aging calculation
   useEffect(() => {
     // Theme setup
@@ -945,7 +954,32 @@ export default function App() {
   };
 
   const handleUpdateComplaint = (updates) => {
-    const updateList = Array.isArray(updates) ? updates : [updates];
+    let updateList = [];
+    if (updates && !Array.isArray(updates) && updates.isGroup) {
+      const childIds = new Set(updates.childComplaints.map(ch => ch.id));
+      updateList = updates.childComplaints.map(ch => {
+        return {
+          ...ch,
+          status: updates.status,
+          assignedDepartment: updates.assignedDepartment,
+          hierarchyLevel: updates.hierarchyLevel,
+          seriousness: updates.seriousness,
+          originalSeriousness: updates.originalSeriousness,
+          comments: updates.comments,
+          resolutionNotes: updates.resolutionNotes,
+          resolutionImage: updates.resolutionImage,
+          resolvedDate: updates.resolvedDate,
+          scheduledDate: updates.scheduledDate,
+          assignedTeam: updates.assignedTeam,
+          technicianName: updates.technicianName,
+          technicianPhone: updates.technicianPhone,
+          escalationStatus: updates.escalationStatus,
+          escalationLogs: updates.escalationLogs
+        };
+      });
+    } else {
+      updateList = Array.isArray(updates) ? updates : [updates];
+    }
     const updateMap = new Map(updateList.map(u => [u.id, u]));
 
     const updatedList = complaints.map(c => {
@@ -961,8 +995,27 @@ export default function App() {
 
     // Sync details popup if active
     if (selectedComplaint) {
-      const activeObj = aged.find(c => c.id === selectedComplaint.id);
-      if (activeObj) setSelectedComplaint(activeObj);
+      if (selectedComplaint.isGroup) {
+        const freshVisibleList = (currentUser.role === "admin" || currentUser.role === "ADMIN") 
+          ? aged 
+          : aged.filter(c => {
+              const adminInfo = getAdminInfoFromRole(currentUser.role);
+              if (adminInfo) {
+                return c.hierarchyLevel === adminInfo.level && c.assignedDepartment === adminInfo.department;
+              }
+              return true;
+            });
+        const freshGroups = getGroupedComplaints(freshVisibleList);
+        const activeGroup = freshGroups.find(g => g.id === selectedComplaint.id || (g.childComplaints && g.childComplaints.some(ch => ch.id === selectedComplaint.id)));
+        if (activeGroup) {
+          setSelectedComplaint(activeGroup);
+        } else {
+          setSelectedComplaint(null);
+        }
+      } else {
+        const activeObj = aged.find(c => c.id === selectedComplaint.id);
+        if (activeObj) setSelectedComplaint(activeObj);
+      }
     }
   };
 
@@ -1039,7 +1092,7 @@ export default function App() {
       <main className="main-content-tab-window animate-fade-in">
         {activeTab === "feed" && (
           <ComplaintFeed
-            complaints={visibleComplaints}
+            complaints={processedComplaints}
             onComplaintClick={handleOpenComplaintDetails}
             onUpvote={handleUpvote}
             currentUser={currentUser}
@@ -1048,7 +1101,7 @@ export default function App() {
 
         {activeTab === "map" && (
           <InteractiveMap
-            complaints={visibleComplaints}
+            complaints={processedComplaints}
             onComplaintClick={handleOpenComplaintDetails}
             theme={theme}
           />
@@ -1056,13 +1109,13 @@ export default function App() {
 
         {activeTab === "leaderboard" && (
           <Leaderboard
-            complaints={visibleComplaints}
+            complaints={processedComplaints}
           />
         )}
 
         {activeTab === "insights" && (
           <Dashboard
-            complaints={visibleComplaints}
+            complaints={processedComplaints}
           />
         )}
       </main>

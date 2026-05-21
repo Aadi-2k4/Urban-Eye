@@ -8,7 +8,7 @@ import {
   Send, ShieldAlert, CheckCircle, Truck, Eye, PenTool, Sparkles, Map as MapIcon, Route
 } from "lucide-react";
 import { districtNames } from "../utils/seedData";
-import { getAdminInfoFromRole, isUserAdmin } from "../utils/storage";
+import { getAdminInfoFromRole, isUserAdmin, canManageComplaint } from "../utils/storage";
 
 // Fix Leaflet marker icon asset issue in React
 const customIcon = new L.Icon({
@@ -77,25 +77,7 @@ export default function ComplaintDetails({
   };
 
   const canAdminManage = useMemo(() => {
-    if (!currentUser) return false;
-    if (currentUser.role === "admin") return true;
-    if (!currentUser.role.endsWith("_ADMIN")) return false;
-
-    const info = getAdminInfoFromRole(currentUser.role);
-    if (!info) return false;
-
-    // Check category/department match
-    if (complaint.category !== info.department) return false;
-
-    // Check level match
-    if (info.level === "panchayath") {
-      return complaint.hierarchyLevel === "panchayath" && complaint.panchayath === info.scope;
-    } else if (info.level === "district") {
-      return complaint.district === info.scope;
-    } else if (info.level === "state") {
-      return true;
-    }
-    return false;
+    return canManageComplaint(currentUser, complaint);
   }, [currentUser, complaint]);
 
   useEffect(() => {
@@ -297,6 +279,55 @@ export default function ComplaintDetails({
               <span>{new Date(complaint.createdAt).toLocaleString()}</span>
             </div>
           </div>
+
+          {complaint.isGroup && (
+            <div className="grouped-alert-banner glass" style={{
+              background: "rgba(99, 102, 241, 0.08)",
+              border: "1px solid var(--accent-color)",
+              padding: "16px",
+              borderRadius: "8px",
+              marginBottom: "20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <ShieldAlert size={18} color="var(--accent-color)" />
+                <strong style={{ fontSize: "14px", color: "var(--accent-color)" }}>
+                  Grouped Issue (Contains {complaint.childComplaints.length} duplicate citizen reports)
+                </strong>
+              </div>
+              <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0 }}>
+                These complaints have the same category, similar descriptions, and are located within 300 meters of each other. 
+                Any resolution actions taken here will automatically propagate and apply to all child issues.
+              </p>
+              <div style={{ marginTop: "8px" }}>
+                <span style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: "700", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+                  Submissions in this group:
+                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "150px", overflowY: "auto" }}>
+                  {complaint.childComplaints.map((child, index) => (
+                    <div key={child.id} style={{
+                      background: "rgba(255, 255, 255, 0.03)",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      border: "1px solid var(--border-color)"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                        <strong>Report #{index + 1} (Ref: {child.id})</strong>
+                        <span style={{ color: "var(--text-muted)" }}>Upvotes: {child.upvotes || 0}</span>
+                      </div>
+                      <p style={{ margin: 0, opacity: 0.8 }}>"{child.descEn}"</p>
+                      <small style={{ color: "var(--text-muted)", display: "block", marginTop: "4px" }}>
+                        Filed by: {isUserAdmin(currentUser) ? "[REDACTED FOR PRIVACY]" : child.citizen} on {new Date(child.createdAt).toLocaleString()}
+                      </small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Stepper (E-commerce Style Status Tracking) */}
           <div className="stepper-section glass">

@@ -312,3 +312,110 @@ export const clearSession = () => {
     console.error("Session clear error: ", e);
   }
 };
+
+// Haversine formula to compute distance in meters between two coordinates
+export function calculateDistanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Radius of Earth in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Token-based Jaccard similarity and overlap coefficient for description similarity
+export function areDescriptionsSimilar(d1, d2) {
+  if (!d1 || !d2) return false;
+  const clean1 = d1.toLowerCase().trim();
+  const clean2 = d2.toLowerCase().trim();
+  if (clean1 === clean2) return true;
+  if (clean1.includes(clean2) && clean2.length > 10) return true;
+  if (clean2.includes(clean1) && clean1.length > 10) return true;
+
+  const getTokens = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+  const t1 = getTokens(clean1);
+  const t2 = getTokens(clean2);
+  if (t1.length === 0 || t2.length === 0) return false;
+
+  const s1 = new Set(t1);
+  const s2 = new Set(t2);
+  let intersection = 0;
+  for (const w of s1) {
+    if (s2.has(w)) intersection++;
+  }
+  const jaccard = intersection / new Set([...t1, ...t2]).size;
+  const overlap = intersection / Math.min(s1.size, s2.size);
+
+  return jaccard > 0.15 || overlap > 0.35;
+}
+
+// Group complaints of same category, similar description, and within 300 meters
+export function getGroupedComplaints(list) {
+  const groups = [];
+  const visited = new Set();
+
+  const PRIORITY_VALUES = { low: 1, medium: 2, high: 3, critical: 4 };
+  const getHighestPriority = (children) => {
+    let highest = "low";
+    let maxVal = 0;
+    children.forEach(c => {
+      const val = PRIORITY_VALUES[c.seriousness] || 1;
+      if (val > maxVal) {
+        maxVal = val;
+        highest = c.seriousness;
+      }
+    });
+    return highest;
+  };
+
+  for (let i = 0; i < list.length; i++) {
+    const c1 = list[i];
+    if (visited.has(c1.id)) continue;
+
+    const groupMembers = [c1];
+    visited.add(c1.id);
+
+    for (let j = i + 1; j < list.length; j++) {
+      const c2 = list[j];
+      if (visited.has(c2.id)) continue;
+
+      // 1. Same category
+      const sameCategory = c1.category === c2.category;
+      if (!sameCategory) continue;
+
+      // 2. Within 300 meters distance
+      const distance = calculateDistanceMeters(c1.lat, c1.lng, c2.lat, c2.lng);
+      const withinDistance = distance <= 300;
+      if (!withinDistance) continue;
+
+      // 3. Similar description
+      const similarDesc = areDescriptionsSimilar(c1.descEn, c2.descEn);
+      if (!similarDesc) continue;
+
+      groupMembers.push(c2);
+      visited.add(c2.id);
+    }
+
+    if (groupMembers.length > 1) {
+      // Create a representative parent
+      const totalUpvotes = groupMembers.reduce((sum, m) => sum + (m.upvotes || 0), 0);
+      const groupPriority = getHighestPriority(groupMembers);
+
+      // Clone the first item to act as parent
+      const parent = { ...groupMembers[0] };
+      parent.isGroup = true;
+      parent.childComplaints = groupMembers;
+      parent.upvotes = totalUpvotes;
+      parent.seriousness = groupPriority;
+      
+      groups.push(parent);
+    } else {
+      groups.push(c1);
+    }
+  }
+
+  return groups;
+}

@@ -58,6 +58,21 @@ export default function ComplaintCard({ complaint, onClick, onUpvote, currentUse
           <span>{cat.label}</span>
         </span>
 
+        {complaint.isGroup && (
+          <span className="group-badge-card" style={{
+            background: "var(--accent-color)",
+            color: "white",
+            fontSize: "10px",
+            fontWeight: "700",
+            padding: "3px 8px",
+            borderRadius: "20px",
+            boxShadow: "0 0 8px var(--accent-glow)",
+            border: "1px solid rgba(255, 255, 255, 0.15)"
+          }}>
+            👥 Group ({complaint.childComplaints.length})
+          </span>
+        )}
+
         <span className={`seriousness-badge ${complaint.seriousness}`}>
           {complaint.seriousness.toUpperCase()}
           {complaint.seriousness === "critical" && <span className="seriousness-pulse-critical" />}
