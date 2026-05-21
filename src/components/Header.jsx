@@ -1,6 +1,6 @@
 // Header.jsx - Main top navigation bar with User authentication feedback, theme switches, and Time Machine fast forward controls
 import React from "react";
-import { Megaphone, Map, Trophy, BarChart3, Sun, Moon, Plus, LogIn, LogOut, ShieldAlert, FastForward, User, RotateCcw } from "lucide-react";
+import { Megaphone, Map, BarChart3, Sun, Moon, Plus, LogIn, LogOut, ShieldAlert, FastForward, User, RotateCcw } from "lucide-react";
 import { isUserAdmin } from "../utils/storage";
 
 export default function Header({
@@ -18,10 +18,12 @@ export default function Header({
 }) {
   const tabs = [
     { id: "feed", label: "Feed", icon: Megaphone },
-    { id: "map", label: "Map View", icon: Map },
-    { id: "leaderboard", label: "Leaderboard", icon: Trophy },
-    { id: "insights", label: "Insights", icon: BarChart3 }
+    { id: "map", label: "Map View", icon: Map }
   ];
+
+  if (currentUser && isUserAdmin(currentUser)) {
+    tabs.push({ id: "insights", label: "Insights", icon: BarChart3 });
+  }
 
   return (
     <header className="header-glass glass">
@@ -155,6 +157,7 @@ export default function Header({
         }
 
         .header-container {
+          position: relative;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -169,7 +172,8 @@ export default function Header({
           align-items: center;
           gap: 10px;
           cursor: pointer;
-          flex-shrink: 0;
+          flex: 1;
+          min-width: max-content;
         }
 
         .brand-icon {
@@ -180,12 +184,14 @@ export default function Header({
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
         }
 
         .brand-text {
           display: flex;
           flex-direction: column;
           line-height: 1.1;
+          flex-shrink: 0;
         }
 
         .brand-main {
@@ -208,6 +214,7 @@ export default function Header({
           border-radius: 10px;
           border: 1px solid var(--border-color);
           gap: 2px;
+          flex-shrink: 0;
         }
 
         .tab-btn {
@@ -241,7 +248,10 @@ export default function Header({
         .header-actions {
           display: flex;
           align-items: center;
+          justify-content: flex-end;
           gap: 12px;
+          flex: 1;
+          min-width: max-content;
         }
 
         .time-machine-container {
@@ -429,6 +439,8 @@ export default function Header({
           }
           
           .nav-tabs {
+            position: static;
+            transform: none;
             gap: 0;
           }
           

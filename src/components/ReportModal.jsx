@@ -6,6 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import WhatsAppChatSim from "./WhatsAppChatSim";
 import { districtNames } from "../utils/seedData";
+import { translateEnglishToMalayalam } from "../utils/translator";
 
 // Fix Leaflet marker icon asset issue in React
 const customIcon = new L.Icon({
@@ -130,6 +131,7 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
   const [seriousness, setSeriousness] = useState("medium");
   const [gpsLoading, setGpsLoading] = useState(false);
   const [translateLoading, setTranslateLoading] = useState(false);
+  const [translateDescLoading, setTranslateDescLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [mapCenter, setMapCenter] = useState(DISTRICT_CENTERS.EKM);
   const [customImage, setCustomImage] = useState(null);
@@ -205,15 +207,32 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
     reader.readAsDataURL(file);
   };
 
-  const handleAutoTranslate = () => {
+  const handleAutoTranslate = async () => {
+    if (!titleEn.trim()) return;
     setTranslateLoading(true);
-    setTimeout(() => {
-      const trans = MOCK_TRANSLATIONS[category] || MOCK_TRANSLATIONS.other;
-      setTitleMl(trans.titleMl);
-      setDescMl(descEn ? `[തർജ്ജമ ചെയ്തത്]: ${descEn}\n\n${trans.descMl}` : trans.descMl);
+    try {
+      const translatedTitle = await translateEnglishToMalayalam(titleEn, category, "title");
+      setTitleMl(translatedTitle);
+    } catch (error) {
+      console.error("Auto translation failed:", error);
+    } finally {
       setTranslateLoading(false);
-    }, 600);
+    }
   };
+
+  const handleTranslateDesc = async () => {
+    if (!descEn.trim()) return;
+    setTranslateDescLoading(true);
+    try {
+      const translatedDesc = await translateEnglishToMalayalam(descEn, category, "desc");
+      setDescMl(translatedDesc);
+    } catch (error) {
+      console.error("Auto translation failed:", error);
+    } finally {
+      setTranslateDescLoading(false);
+    }
+  };
+
 
   const handleNextStep1 = () => {
     if (!titleEn.trim() || !descEn.trim()) {
@@ -441,7 +460,13 @@ export default function ReportModal({ isOpen, onClose, onNewComplaint, currentUs
                       </div>
 
                       <div className="form-group">
-                        <label>Detailed Description (Malayalam)</label>
+                        <div className="label-with-action">
+                          <label>Detailed Description (Malayalam)</label>
+                          <button type="button" className="btn-action-sparkle" onClick={handleTranslateDesc}>
+                            <Sparkles size={12} />
+                            <span>{translateDescLoading ? "Translating..." : "Auto-Translate"}</span>
+                          </button>
+                        </div>
                         <textarea
                           rows={2}
                           placeholder="സംഭവം കൂടുതൽ വ്യക്തമാക്കുക..."

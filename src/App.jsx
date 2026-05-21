@@ -3,8 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import Header from "./components/Header";
 import ComplaintFeed from "./components/ComplaintFeed";
 import InteractiveMap from "./components/InteractiveMap";
-import Leaderboard from "./components/Leaderboard";
 import Dashboard from "./components/Dashboard";
+import Help from "./components/Help";
 import AuthModal from "./components/AuthModal";
 import ReportModal from "./components/ReportModal";
 import ComplaintDetails from "./components/ComplaintDetails";
@@ -22,7 +22,8 @@ import {
   CheckCircle,
   Calendar,
   Zap,
-  ArrowRight
+  ArrowRight,
+  HelpCircle
 } from "lucide-react";
 
 import { 
@@ -35,7 +36,8 @@ import {
   saveSimulatedAgedDays,
   getAdminInfoFromRole,
   getGroupedComplaints,
-  sanitizeComplaint
+  sanitizeComplaint,
+  isUserAdmin
 } from "./utils/storage";
 
 import {
@@ -54,6 +56,7 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,10 +101,10 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
   };
 
   return (
-    <div className="landing-gate-viewport animate-fade-in">
+    <div className="landing-gate-viewport animate-fade-in" style={showHelp ? { alignItems: "flex-start" } : {}}>
       {/* Top Glass Header */}
       <header className="landing-header glass">
-        <div className="brand">
+        <div className="brand" onClick={() => setShowHelp(false)} style={{ cursor: "pointer" }}>
           <div className="brand-icon pulse-glow">
             <Megaphone size={20} color="white" />
           </div>
@@ -111,193 +114,210 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
           </div>
         </div>
         
-        <button
-          onClick={toggleTheme}
-          className="action-btn theme-toggle"
-          aria-label="Toggle theme"
-          title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="btn-secondary"
+            style={{ height: "38px", display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            <HelpCircle size={16} />
+            <span>{showHelp ? "Back to Login" : "Help & Guide"}</span>
+          </button>
+
+          <button
+            onClick={toggleTheme}
+            className="action-btn theme-toggle"
+            aria-label="Toggle theme"
+            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
       </header>
 
-      {/* Hero Core Section Grid */}
-      <div className="landing-grid-container">
-        
-        {/* Left Column: Premium Value Pitch Cards */}
-        <div className="pitch-column">
-          <div className="pitch-intro">
-            <span className="badge-pill">🛡️ SECURE CIVIC ENGAGEMENT</span>
-            <h1>Kerala's Next-Generation Smart Unified Grievance Platform</h1>
-            <p>
-              UrbanEye merges real-time public complaints with an autonomous route-scheduling and dispatch optimizer. 
-              Say goodbye to administrative stagnation and falsified reports.
-            </p>
-          </div>
-
-          <div className="pitch-cards">
-            {/* Card 1 */}
-            <div className="pitch-card glass">
-              <div className="card-icon-box priority">
-                <Sparkles size={20} />
-              </div>
-              <div className="card-content">
-                <h3>Autonomous Urgency Scheduling & Aging</h3>
-                <p>
-                  Urgent tickets (Critical/High) automatically schedule resolutions in 2-5 days. 
-                  Low-priority tickets age dynamically over time to prevent resource starvation.
-                </p>
-              </div>
-            </div>
-
-            {/* Card 2 */}
-            <div className="pitch-card glass">
-              <div className="card-icon-box proximity">
-                <MapPin size={20} />
-              </div>
-              <div className="card-content">
-                <h3>Proximity Route Optimizer</h3>
-                <p>
-                  Aggregates minor tickets in the same geographical vicinity into a single unified route, 
-                  allowing dispatch crews to solve adjacent civic issues atomically in one trip.
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div className="pitch-card glass">
-              <div className="card-icon-box verification">
-                <Activity size={20} />
-              </div>
-              <div className="card-content">
-                <h3>Verified WhatsApp Pipeline</h3>
-                <p>
-                  Empowers citizens to file grievances directly via standard chat bots, 
-                  enforced by 4-digit SMS OTP verification sessions to fully verify sender identity.
-                </p>
-              </div>
-            </div>
-          </div>
+      {showHelp ? (
+        <div className="landing-help-wrapper animate-slide-up" style={{ width: "100%", maxWidth: "960px", margin: "40px auto 0", zIndex: 1 }}>
+          <Help currentUser={null} />
         </div>
-
-        {/* Right Column: Portal Login Verification Gate */}
-        <div className="login-column">
-          <div className="login-card glass animate-slide-up">
-            
-            {/* Header info */}
-            <div className="login-card-header">
-              <h2>Portal Identity Verification</h2>
-              <p>Log in or create a secure account to access the live dashboard</p>
+      ) : (
+        /* Hero Core Section Grid */
+        <div className="landing-grid-container">
+          
+          {/* Left Column: Premium Value Pitch Cards */}
+          <div className="pitch-column">
+            <div className="pitch-intro">
+              <span className="badge-pill">🛡️ SECURE CIVIC ENGAGEMENT</span>
+              <h1>Kerala's Next-Generation Smart Unified Grievance Platform</h1>
+              <p>
+                UrbanEye merges real-time public complaints with an autonomous route-scheduling and dispatch optimizer. 
+                Say goodbye to administrative stagnation and falsified reports.
+              </p>
             </div>
 
-            {/* Tabs */}
-            <div className="auth-tabs">
-              <button
-                onClick={() => { setTab("login"); setError(""); }}
-                className={`auth-tab-btn ${tab === "login" ? "active" : ""}`}
-              >
-                <User size={14} />
-                <span>Citizen Login</span>
-              </button>
-              <button
-                onClick={() => { setTab("signup"); setError(""); }}
-                className={`auth-tab-btn ${tab === "signup" ? "active" : ""}`}
-              >
-                <UserPlus size={14} />
-                <span>Sign Up</span>
-              </button>
-              <button
-                onClick={() => { setTab("admin"); setError(""); }}
-                className={`auth-tab-btn ${tab === "admin" ? "active" : ""}`}
-              >
-                <ShieldCheck size={14} />
-                <span>Admin Console</span>
-              </button>
-            </div>
-
-            {/* Form */}
-            {success ? (
-              <div className="login-success-state">
-                <CheckCircle size={48} className="success-pulse" />
-                <h3>Session Authenticated</h3>
-                <p>Verifying digital credentials. Redirecting to live feeds...</p>
+            <div className="pitch-cards">
+              {/* Card 1 */}
+              <div className="pitch-card glass">
+                <div className="card-icon-box priority">
+                  <Sparkles size={20} />
+                </div>
+                <div className="card-content">
+                  <h3>Autonomous Urgency Scheduling & Aging</h3>
+                  <p>
+                    Urgent tickets (Critical/High) automatically schedule resolutions in 2-5 days. 
+                    Low-priority tickets age dynamically over time to prevent resource starvation.
+                  </p>
+                </div>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="auth-form">
-                {error && <div className="auth-error-alert">{error}</div>}
 
-                {tab === "signup" && (
+              {/* Card 2 */}
+              <div className="pitch-card glass">
+                <div className="card-icon-box proximity">
+                  <MapPin size={20} />
+                </div>
+                <div className="card-content">
+                  <h3>Proximity Route Optimizer</h3>
+                  <p>
+                    Aggregates minor tickets in the same geographical vicinity into a single unified route, 
+                    allowing dispatch crews to solve adjacent civic issues atomically in one trip.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3 */}
+              <div className="pitch-card glass">
+                <div className="card-icon-box verification">
+                  <Activity size={20} />
+                </div>
+                <div className="card-content">
+                  <h3>Verified WhatsApp Pipeline</h3>
+                  <p>
+                    Empowers citizens to file grievances directly via standard chat bots, 
+                    enforced by 4-digit SMS OTP verification sessions to fully verify sender identity.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Portal Login Verification Gate */}
+          <div className="login-column">
+            <div className="login-card glass animate-slide-up">
+              
+              {/* Header info */}
+              <div className="login-card-header">
+                <h2>Portal Identity Verification</h2>
+                <p>Log in or create a secure account to access the live dashboard</p>
+              </div>
+
+              {/* Tabs */}
+              <div className="auth-tabs">
+                <button
+                  onClick={() => { setTab("login"); setError(""); }}
+                  className={`auth-tab-btn ${tab === "login" ? "active" : ""}`}
+                >
+                  <User size={14} />
+                  <span>Citizen Login</span>
+                </button>
+                <button
+                  onClick={() => { setTab("signup"); setError(""); }}
+                  className={`auth-tab-btn ${tab === "signup" ? "active" : ""}`}
+                >
+                  <UserPlus size={14} />
+                  <span>Sign Up</span>
+                </button>
+                <button
+                  onClick={() => { setTab("admin"); setError(""); }}
+                  className={`auth-tab-btn ${tab === "admin" ? "active" : ""}`}
+                >
+                  <ShieldCheck size={14} />
+                  <span>Admin Console</span>
+                </button>
+              </div>
+
+              {/* Form */}
+              {success ? (
+                <div className="login-success-state">
+                  <CheckCircle size={48} className="success-pulse" />
+                  <h3>Session Authenticated</h3>
+                  <p>Verifying digital credentials. Redirecting to live feeds...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="auth-form">
+                  {error && <div className="auth-error-alert">{error}</div>}
+
+                  {tab === "signup" && (
+                    <div className="form-group">
+                      <label htmlFor="landing-name">Full Name</label>
+                      <div className="input-with-icon">
+                        <User size={16} className="input-icon" />
+                        <input
+                          id="landing-name"
+                          type="text"
+                          placeholder="e.g. Anand Krishna"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="form-group">
-                    <label htmlFor="landing-name">Full Name</label>
+                    <label htmlFor="landing-username">
+                      {tab === "admin" ? "Admin Identifier" : "Username"}
+                    </label>
                     <div className="input-with-icon">
                       <User size={16} className="input-icon" />
                       <input
-                        id="landing-name"
+                        id="landing-username"
                         type="text"
-                        placeholder="e.g. Anand Krishna"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        placeholder={tab === "admin" ? "e.g. admin" : "e.g. citizen"}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        autoCapitalize="none"
                         required
                       />
                     </div>
                   </div>
-                )}
 
-                <div className="form-group">
-                  <label htmlFor="landing-username">
-                    {tab === "admin" ? "Admin Identifier" : "Username"}
-                  </label>
-                  <div className="input-with-icon">
-                    <User size={16} className="input-icon" />
-                    <input
-                      id="landing-username"
-                      type="text"
-                      placeholder={tab === "admin" ? "e.g. admin" : "e.g. citizen"}
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      autoCapitalize="none"
-                      required
-                    />
+                  <div className="form-group">
+                    <label htmlFor="landing-password">Password</label>
+                    <div className="input-with-icon">
+                      <Lock size={16} className="input-icon" />
+                      <input
+                        id="landing-password"
+                        type="password"
+                        placeholder={tab === "admin" ? "••••••••" : "e.g. 123"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label htmlFor="landing-password">Password</label>
-                  <div className="input-with-icon">
-                    <Lock size={16} className="input-icon" />
-                    <input
-                      id="landing-password"
-                      type="password"
-                      placeholder={tab === "admin" ? "••••••••" : "e.g. 123"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
+                  {tab === "admin" && (
+                    <p className="admin-notice">
+                      ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
+                    </p>
+                  )}
 
-                {tab === "admin" && (
-                  <p className="admin-notice">
-                    ⚠️ Authorized Personnel Only. Use role-specific credentials (e.g. <code>panchayath_road</code> / <code>123</code> or <code>admin</code> / <code>admin</code>).
-                  </p>
-                )}
+                  <button type="submit" className="auth-submit-btn ripple-hover pulse-glow">
+                    <span>
+                      {tab === "login" ? "Verify Credentials" : tab === "signup" ? "Create Account" : "Access Admin Console"}
+                    </span>
+                    <ArrowRight size={16} />
+                  </button>
+                </form>
+              )}
 
-                <button type="submit" className="auth-submit-btn ripple-hover pulse-glow">
-                  <span>
-                    {tab === "login" ? "Verify Credentials" : tab === "signup" ? "Create Account" : "Access Admin Console"}
-                  </span>
-                  <ArrowRight size={16} />
-                </button>
-              </form>
-            )}
-
-            {/* Quick credentials hint */}
-            <div className="login-footer-hint">
-              <p>💡 Tip: Use guest login credentials <code>citizen</code> / <code>123</code> or <code>admin</code> / <code>admin</code> to explore immediately.</p>
+              {/* Quick credentials hint */}
+              <div className="login-footer-hint">
+                <p>💡 Tip: Use guest login credentials <code>citizen</code> / <code>123</code> or <code>admin</code> / <code>admin</code> to explore immediately.</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <style>{`
         .landing-gate-viewport {
@@ -1123,13 +1143,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === "leaderboard" && (
-          <Leaderboard
-            complaints={processedComplaints}
-          />
-        )}
-
-        {activeTab === "insights" && (
+        {activeTab === "insights" && isUserAdmin(currentUser) && (
           <Dashboard
             complaints={processedComplaints}
           />

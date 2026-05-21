@@ -34,8 +34,7 @@ UrbanEye is a next-generation smart complaint management system designed for mun
 
 ### 6. 📊 Custom GIS Maps & SVG Analytics
 * **Leaflet GIS Integration:** Projects active complaints as color-coded, glowing pins on a map.
-* **Insights Dashboard:** Custom-handwritten responsive SVG Bar Charts (grievances by category) and SVG Radial Segment Donut Charts (lifecycles).
-* **Live Leaderboards:** Dynamically ranks all 14 Kerala districts based on municipal resolution efficiency.
+* **Insights Dashboard (Admin-only):** Custom-handwritten responsive SVG Bar Charts (grievances by category) and SVG Radial Segment Donut Charts (lifecycles).
 
 ---
 
@@ -99,7 +98,6 @@ This builds optimized client chunks in the `/dist` directory with zero errors or
     │   ├── ComplaintCard.jsx# Complaint cards with highlighted upvoted states
     │   ├── ComplaintDetails.jsx # E-commerce steppers, Leaflet map, comments, and admin optimizer
     │   ├── InteractiveMap.jsx # Custom Leaflet GIS map projector
-    │   ├── Leaderboard.jsx  # Kerala dynamic district rank board
     │   ├── Dashboard.jsx    # Custom responsive SVG charts
     │   ├── ReportModal.jsx  # 3-step complaint wizard with Leaflet locator
     │   └── WhatsAppChatSim.jsx # Simulated WhatsApp OTP pipeline
