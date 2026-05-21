@@ -1,7 +1,7 @@
 // AuthModal.jsx - Citizen and Admin login/signup form
 import React, { useState } from "react";
 import { X, User, Lock, UserPlus, ShieldCheck } from "lucide-react";
-import { getStoredUsers, saveUsers } from "../utils/storage";
+import { apiLogin, apiSignup } from "../utils/api";
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [tab, setTab] = useState("login"); // login | signup | admin
@@ -12,7 +12,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -21,57 +21,33 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
       return;
     }
 
-    if (tab === "admin") {
-      const users = getStoredUsers();
-      const adminUser = users.find(
-        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password && u.role !== "citizen"
-      );
-      
-      const isSuperAdmin = username.toLowerCase() === "admin" && password === "admin";
-
-      if (isSuperAdmin) {
-        onLoginSuccess({ name: "Government Administrator", role: "admin", username: "admin" });
-        onClose();
-        resetForm();
-      } else if (adminUser) {
-        onLoginSuccess(adminUser);
-        onClose();
-        resetForm();
-      } else {
-        setError("Invalid administrator credentials.");
-      }
-    } else if (tab === "login") {
-      const users = getStoredUsers();
-      const user = users.find(
-        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-      );
-
-      if (user) {
+    try {
+      if (tab === "admin") {
+        const user = await apiLogin(username, password);
+        if (user.role === "citizen") {
+          setError("Authorized administrator account required.");
+          return;
+        }
         onLoginSuccess(user);
         onClose();
         resetForm();
-      } else {
-        setError("Invalid username or password.");
+      } else if (tab === "login") {
+        const user = await apiLogin(username, password);
+        onLoginSuccess(user);
+        onClose();
+        resetForm();
+      } else if (tab === "signup") {
+        if (!name) {
+          setError("Please enter your full name.");
+          return;
+        }
+        const newUser = await apiSignup(name, username, password);
+        onLoginSuccess(newUser);
+        onClose();
+        resetForm();
       }
-    } else if (tab === "signup") {
-      if (!name) {
-        setError("Please enter your full name.");
-        return;
-      }
-
-      const users = getStoredUsers();
-      const exists = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
-
-      if (exists) {
-        setError("Username already exists.");
-        return;
-      }
-
-      const newUser = { name, username, password, role: "citizen" };
-      saveUsers([...users, newUser]);
-      onLoginSuccess(newUser);
-      onClose();
-      resetForm();
+    } catch (err) {
+      setError(err.message || "An error occurred during authentication.");
     }
   };
 

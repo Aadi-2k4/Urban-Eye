@@ -115,7 +115,7 @@ export const canEscalate = (user, complaint) => {
 };
 
 // Automatically upgrades and sanitizes legacy complaints to prevent crashes from old data structures
-const sanitizeComplaint = (c) => {
+export const sanitizeComplaint = (c) => {
   if (!c) return null;
 
   // Extract legacy coordinates or fall back to Kerala center

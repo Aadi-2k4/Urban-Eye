@@ -26,8 +26,6 @@ import {
 } from "lucide-react";
 
 import { 
-  getComplaints, 
-  saveComplaints, 
   getStoredTheme, 
   saveStoredTheme, 
   getStoredSession, 
@@ -35,11 +33,19 @@ import {
   clearSession,
   getSimulatedAgedDays,
   saveSimulatedAgedDays,
-  getStoredUsers,
-  saveUsers,
   getAdminInfoFromRole,
-  getGroupedComplaints
+  getGroupedComplaints,
+  sanitizeComplaint
 } from "./utils/storage";
+
+import {
+  apiLogin,
+  apiSignup,
+  apiGetComplaints,
+  apiSaveComplaintsBulk,
+  apiResetComplaints,
+  apiSaveComplaint
+} from "./utils/api";
 
 export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
   const [tab, setTab] = useState("login"); // login | signup | admin
@@ -49,7 +55,7 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -58,61 +64,36 @@ export function LandingGate({ onLoginSuccess, theme, toggleTheme }) {
       return;
     }
 
-    if (tab === "admin") {
-      const users = getStoredUsers();
-      const adminUser = users.find(
-        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password && u.role !== "citizen"
-      );
-      
-      const isSuperAdmin = username.toLowerCase() === "admin" && password === "admin";
-
-      if (isSuperAdmin) {
-        setSuccess(true);
-        setTimeout(() => {
-          onLoginSuccess({ name: "Government Administrator", role: "admin", username: "admin" });
-        }, 800);
-      } else if (adminUser) {
+    try {
+      if (tab === "admin") {
+        const adminUser = await apiLogin(username, password);
+        if (adminUser.role === "citizen") {
+          setError("Authorized administrator account required.");
+          return;
+        }
         setSuccess(true);
         setTimeout(() => {
           onLoginSuccess(adminUser);
         }, 800);
-      } else {
-        setError("Invalid administrator credentials.");
-      }
-    } else if (tab === "login") {
-      const users = getStoredUsers();
-      const user = users.find(
-        (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-      );
-
-      if (user) {
+      } else if (tab === "login") {
+        const user = await apiLogin(username, password);
         setSuccess(true);
         setTimeout(() => {
           onLoginSuccess(user);
         }, 800);
-      } else {
-        setError("Invalid username or password.");
+      } else if (tab === "signup") {
+        if (!name) {
+          setError("Please enter your full name.");
+          return;
+        }
+        const newUser = await apiSignup(name, username, password);
+        setSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(newUser);
+        }, 800);
       }
-    } else if (tab === "signup") {
-      if (!name) {
-        setError("Please enter your full name.");
-        return;
-      }
-
-      const users = getStoredUsers();
-      const exists = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
-
-      if (exists) {
-        setError("Username already exists.");
-        return;
-      }
-
-      const newUser = { name, username, password, role: "citizen" };
-      saveUsers([...users, newUser]);
-      setSuccess(true);
-      setTimeout(() => {
-        onLoginSuccess(newUser);
-      }, 800);
+    } catch (err) {
+      setError(err.message || "Invalid credentials or connection error.");
     }
   };
 
@@ -794,11 +775,19 @@ export default function App() {
     const agedDays = getSimulatedAgedDays();
     setSimulatedDaysAged(agedDays);
 
-    // Load complaints and run the aging engine
-    const rawComplaints = getComplaints();
-    const agedComplaints = runAgingEngine(rawComplaints, agedDays);
-    setComplaints(agedComplaints);
-    saveComplaints(agedComplaints);
+    // Load complaints and run the aging engine from API
+    const loadData = async () => {
+      try {
+        const rawComplaints = await apiGetComplaints();
+        const sanitized = (rawComplaints || []).map(sanitizeComplaint).filter(Boolean);
+        const agedComplaints = runAgingEngine(sanitized, agedDays);
+        setComplaints(agedComplaints);
+        await apiSaveComplaintsBulk(agedComplaints);
+      } catch (err) {
+        console.error("Failed to load complaints from backend:", err);
+      }
+    };
+    loadData();
   }, []);
 
   // 2. Starvation Prevention & Aging Algorithm
@@ -867,7 +856,7 @@ export default function App() {
   };
 
   // 3. Fast Forward Time Warp Simulator (+7 days pass)
-  const handleFastForwardTime = (days) => {
+  const handleFastForwardTime = async (days) => {
     setIsTimeWarping(true);
 
     const newAgedDays = simulatedDaysAged + days;
@@ -886,7 +875,12 @@ export default function App() {
     // Feed through the aging promotion checker
     const aged = runAgingEngine(shifted, newAgedDays);
     setComplaints(aged);
-    saveComplaints(aged);
+    
+    try {
+      await apiSaveComplaintsBulk(aged);
+    } catch (err) {
+      console.error("Failed to save aged complaints after time warp:", err);
+    }
 
     // If an overlay detail is active, update its reference in state as well
     if (selectedComplaint) {
@@ -900,21 +894,24 @@ export default function App() {
     }, 2000);
   };
 
-  const handleResetSimulation = () => {
+  const handleResetSimulation = async () => {
     setIsTimeWarping(true);
     setSimulatedDaysAged(0);
     saveSimulatedAgedDays(0);
     
-    // Clear localized complaints key to restore original pristine seed data state
-    localStorage.removeItem("urbaneye_complaints");
-    const fresh = getComplaints();
-    const aged = runAgingEngine(fresh, 0);
-    setComplaints(aged);
-    saveComplaints(aged);
-    
-    if (selectedComplaint) {
-      const activeObj = aged.find(c => c.id === selectedComplaint.id);
-      setSelectedComplaint(activeObj || null);
+    try {
+      const fresh = await apiResetComplaints();
+      const sanitized = (fresh || []).map(sanitizeComplaint).filter(Boolean);
+      const aged = runAgingEngine(sanitized, 0);
+      setComplaints(aged);
+      await apiSaveComplaintsBulk(aged);
+      
+      if (selectedComplaint) {
+        const activeObj = aged.find(c => c.id === selectedComplaint.id);
+        setSelectedComplaint(activeObj || null);
+      }
+    } catch (err) {
+      console.error("Failed to reset complaints simulation:", err);
     }
     
     setTimeout(() => {
@@ -941,7 +938,7 @@ export default function App() {
     setActiveTab("feed");
   };
 
-  const handleNewComplaintSubmit = (newComp) => {
+  const handleNewComplaintSubmit = async (newComp) => {
     const enriched = {
       ...newComp,
       simulatedDaysAtCreation: simulatedDaysAged
@@ -950,9 +947,14 @@ export default function App() {
     const updated = [enriched, ...complaints];
     const aged = runAgingEngine(updated);
     setComplaints(aged);
-    saveComplaints(aged);
+    
+    try {
+      await apiSaveComplaintsBulk(aged);
+    } catch (err) {
+      console.error("Failed to save new complaint:", err);
+    }
   };
-  const handleUpdateComplaint = (updates) => {
+  const handleUpdateComplaint = async (updates) => {
     let updateList = [];
     const rawUpdates = Array.isArray(updates) ? updates : [updates];
     
@@ -995,7 +997,12 @@ export default function App() {
 
     const aged = runAgingEngine(updatedList);
     setComplaints(aged);
-    saveComplaints(aged);
+    
+    try {
+      await apiSaveComplaintsBulk(aged);
+    } catch (err) {
+      console.error("Failed to update complaints:", err);
+    }
 
     // Sync details popup if active
     if (selectedComplaint) {
@@ -1023,7 +1030,7 @@ export default function App() {
     }
   };
 
-  const handleUpvote = (id) => {
+  const handleUpvote = async (id) => {
     if (!currentUser) {
       setAuthModalOpen(true); // Open authentication modal if guest tries to upvote
       return;
@@ -1052,7 +1059,12 @@ export default function App() {
     });
 
     setComplaints(updated);
-    saveComplaints(updated);
+    
+    try {
+      await apiSaveComplaintsBulk(updated);
+    } catch (err) {
+      console.error("Failed to save upvote:", err);
+    }
 
     // Sync details popup if active
     if (selectedComplaint && selectedComplaint.id === id) {

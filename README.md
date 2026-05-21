@@ -1,6 +1,6 @@
 # 👁️ UrbanEye: Smart Unified Complaint Portal
 
-> **കേരളത്തിലെ നഗരകണ്ണ് (UrbanEye)** — A Premium Web Application merging secure civic grievance reporting, autonomous priority scheduling, dynamic starvation prevention, and geographical route optimization.
+> **UrbanEye** — A Premium Web Application merging secure civic grievance reporting, autonomous priority scheduling, dynamic starvation prevention, and geographical route optimization.
 
 UrbanEye is a next-generation smart complaint management system designed for municipal governance in Kerala. Built using **React (Vite)**, **Vanilla HSL CSS variables**, and **Leaflet GIS Maps**, it provides citizens with verified report logging and municipal technicians with optimal route dispatch capabilities.
 
